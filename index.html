@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="app">
-<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab</strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
+<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">V5</span></strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
 <div class="work">
 <aside class="sidebar">
 <section class="panel full"><h2 class="paneltitle">1 · Source model</h2><label class="upload" for="fileInput"><b>↑ Import model or ZIP package</b><small>OBJ · GLB · glTF · STL · PLY · OFF · DAE · 3DS · 3MF · ZIP (including nested ZIPs)</small></label><input id="fileInput" type="file" multiple accept=".obj,.stl,.glb,.gltf,.mtl,.bin,.ply,.off,.dae,.3ds,.3mf,.zip,.jpg,.jpeg,.png,.webp,.fbx,.usdz,.blend,.max" hidden><div class="row" style="margin-top:8px"><button class="btn tiny grow" id="folderLoad" type="button">Import whole folder</button><input id="folderInput" type="file" multiple webkitdirectory directory hidden><span class="hint grow" style="margin:0">Keeps MTL, textures and glTF assets together</span></div><div id="modelPickerRow" class="field hidden" style="margin-top:12px"><label class="numlabel" for="modelPicker">Model in package</label><select id="modelPicker"></select></div><p class="filemeta" id="packageInfo" style="margin:9px 0 0"></p><p class="filemeta" id="sourceInfo" style="margin:10px 0">Sample: Torus · ready to voxelise</p><div class="row"><span class="subhead" style="margin:0">Samples</span><select id="demoSelect" class="grow" aria-label="Sample model"><option value="torus">Torus / doughnut</option><option value="house">Simple house</option><option value="sphere">Sphere</option></select><button class="btn tiny" id="loadDemo">Load</button></div><hr class="divider"><div class="two"><div><label class="numlabel" for="unit">Input units</label><select id="unit"><option value="1">Metres</option><option value="0.01">Centimetres</option><option value="0.001">Millimetres</option><option value="0.0254">Inches</option><option value="0.3048">Feet</option></select></div><div><label class="numlabel" for="scale">Additional scale</label><input id="scale" type="number" min="0.00001" max="100000" step="any" value="1"></div></div><p class="hint">OBJ and STL don't reliably store real-world units. Set these before using a precise cell size.</p></section>
@@ -26,7 +26,7 @@
 <section class="panel"><h2 class="paneltitle">4 · Preview</h2><div class="seg" id="viewTabs"><button data-view="source">Original</button><button class="active" data-view="voxels">Voxels</button><button data-view="both">Overlay</button></div><div class="field" style="margin-top:12px"><div class="switchline"><label class="subhead" for="opacity">Voxel opacity</label><span id="opacityOut">100%</span></div><input type="range" id="opacity" value="100" min="10" max="100" step="5"></div><div class="field"><div class="switchline"><label class="subhead" for="bgGrid">Ground grid</label><input type="checkbox" id="bgGrid" checked></div></div><div class="slice-control"><div class="switchline"><label class="subhead" for="sliceMode" style="margin:0">Layer inspection</label><select id="sliceMode" style="width:120px;height:32px"><option value="all">All layers</option><option value="one">One layer</option><option value="cut">Cutaway</option></select></div><div id="sliceControls" class="hidden" style="margin-top:10px"><div class="switchline"><span class="subhead">Y layer</span><span class="slice-val" id="sliceLabel">0 / 0</span></div><input type="range" id="slice" min="0" max="1" value="0"></div></div></section>
 <section class="panel"><h2 class="paneltitle">Results</h2><div class="statsgrid"><div class="stat"><b id="count">—</b><small>Occupied voxels</small></div><div class="stat"><b id="gridDims">—</b><small>Grid X × Y × Z</small></div><div class="stat"><b id="quads">—</b><small>Visible merged faces</small></div><div class="stat"><b id="elapsed">—</b><small>Processing time</small></div></div><p class="hint" id="realSize">No voxel grid generated yet.</p></section>
 <section class="panel full"><h2 class="paneltitle">5 · Export</h2><div class="row"><button id="exportJSON" disabled class="btn grow">Download voxel JSON</button><button id="exportOBJ" disabled class="btn grow">Download mesh OBJ</button></div><p class="hint">JSON preserves occupied cells, air spaces, materials, scale and grid dimensions. OBJ exports the merged surface mesh, not editable voxel data.</p></section>
-<div class="footnote">Voxel Lab v3 · ZIP archives and materials handled locally (JSZip, MIT). Textures in OBJ/MTL and glTF/GLB are sampled into voxel colours when their image files and UV coordinates are available. Large models take longer. Solid and shell modes work best with watertight models.</div>
+<div class="footnote">Voxel Lab v5 · ZIP archives and materials handled locally (JSZip, MIT). Textures in OBJ/MTL and glTF/GLB are sampled into voxel colours when their image files and UV coordinates are available. Large models take longer. Solid and shell modes work best with watertight models.</div>
 </aside>
 <main class="workspace" id="workspace"><canvas id="viewer" aria-label="Interactive three-dimensional model viewer"></canvas><div id="dropcover">Drop model files or ZIP packages here</div><div class="viewtop"><div class="pill"><span class="dot"></span><span id="viewName">Sample torus · voxel preview</span></div><div class="pill" id="viewStats">Drag to rotate · Scroll to zoom</div></div><div class="viewbottom"><div class="viewhint">Drag to orbit · Scroll or pinch to zoom · Right-drag or Shift-drag to pan · Double-click to reset</div><div class="viewactions"><button class="toolbtn" id="minusZoom" title="Zoom out">−</button><button class="toolbtn" id="plusZoom" title="Zoom in">＋</button><button class="toolbtn" id="fitBtn" title="Fit model">Fit view</button></div></div></main>
 </div></div>
@@ -388,10 +388,11 @@ function makeSourceGeometry(){if(!source)return null;const pos=source.positions,
  const groups=new Map();
  for(let i=0;i<pos.length;i+=9){let p=[];for(let j=0;j<9;j+=3)p.push([(pos[i+j]-midX)*sc,(pos[i+j+1]-minY)*sc,(pos[i+j+2]-midZ)*sc]);
  const e1=p[1].map((v,k)=>v-p[0][k]),e2=p[2].map((v,k)=>v-p[0][k]),nx=e1[1]*e2[2]-e1[2]*e2[1],ny=e1[2]*e2[0]-e1[0]*e2[2],nz=e1[0]*e2[1]-e1[1]*e2[0],norm=Math.hypot(nx,ny,nz)||1;
- const c=pal[mats[i/9]]||DEFAULT,texId=source.textureMaterials?.[mats[i/9]]||0,vertexColours=source.vertexColours;
- if(!groups.has(texId))groups.set(texId,[]);const out=groups.get(texId);
+ const materialId=mats[i/9],c=pal[materialId]||DEFAULT,texId=source.textureMaterials?.[materialId]||0,vertexColours=source.vertexColours;
+ const alpha=source.materialOpacities?.[materialId]??1,key=texId+':'+alpha;
+ if(!groups.has(key))groups.set(key,{texId,alpha,vertex:[]});const out=groups.get(key).vertex;
  for(let j=0;j<3;j++){out.push(p[j][0],p[j][1],p[j][2],nx/norm,ny/norm,nz/norm,c[0]*(vertexColours?.[(i/3+j)*3]??1),c[1]*(vertexColours?.[(i/3+j)*3+1]??1),c[2]*(vertexColours?.[(i/3+j)*3+2]??1),source.uvs?.[(i/3+j)*2]||0,source.uvs?.[(i/3+j)*2+1]||0);}}
- return{groups:[...groups].map(([texId,vertex])=>({texId,vertex:new Float32Array(vertex)}))};}
+ return{groups:[...groups.values()].sort((a,b)=>b.alpha-a.alpha).map(g=>({texId:g.texId,alpha:g.alpha,vertex:new Float32Array(g.vertex)}))};}
 function uploadSourceTextures(){if(!gl)return;for(const t of modelTexturesGL)if(t)gl.deleteTexture(t);modelTexturesGL=[null];
  for(const src of source?.textures||[]){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,src.width,src.height,0,gl.RGBA,gl.UNSIGNED_BYTE,src.pixels);
@@ -404,7 +405,7 @@ function uploadSourceTextures(){if(!gl)return;for(const t of modelTexturesGL)if(
  const wrapT=!isWebGL2&&npot?gl.CLAMP_TO_EDGE:wrapEnum(src.wrapT);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrapS);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrapT);
  modelTexturesGL.push(tex);}}
-function uploadSourceMeshes(geom){return{groups:geom.groups.map(g=>uploadMesh(g.vertex,null,11,g.texId))};} 
+function uploadSourceMeshes(geom){return{groups:geom.groups.map(g=>{const mesh=uploadMesh(g.vertex,null,11,g.texId);mesh.alpha=g.alpha;return mesh;})};} 
 async function importFiles(list){if(busy)return;const files=[...list];const model=files.find(f=>/\.(obj|stl|glb)$/i.test(f.name));if(!model){setStatus('Choose an OBJ, STL or GLB model.','error');return;}
  try{setStatus('Reading '+model.name+'…');const sidecars=[];for(const f of files.filter(f=>/\.mtl$/i.test(f.name)))sidecars.push({name:f.name,text:await f.text()});
  const ext=model.name.split('.').pop().toLowerCase(),buf=await model.arrayBuffer();let loaded;
@@ -465,7 +466,7 @@ function parseGLTFScene(doc,buffers){const json=doc;
     return i=>{const at0=ofs+i*stride,out=[];if(at0<0||at0+nc*sz>dv.byteLength)throw Error('glTF accessor exceeds its buffer.');for(let j=0;j<nc;j++){let val,at=at0+j*sz;switch(a.componentType){case 5126:val=dv.getFloat32(at,true);break;case 5125:val=dv.getUint32(at,true);break;case 5123:val=dv.getUint16(at,true);break;case 5122:val=dv.getInt16(at,true);break;case 5121:val=dv.getUint8(at);break;case 5120:val=dv.getInt8(at);break;}
       if(a.normalized){switch(a.componentType){case 5125:val/=4294967295;break;case 5123:val/=65535;break;case 5122:val=Math.max(-1,val/32767);break;case 5121:val/=255;break;case 5120:val=Math.max(-1,val/127);break;}}
       out.push(val);}return out;};}
-  const positions=[],uvs=[],vertexColours=[],materials=[],materialImages={},map=new Map();let hasVertexColours=false;
+  const positions=[],uvs=[],vertexColours=[],materials=[],materialImages={},materialOpacities={},map=new Map();let hasVertexColours=false;
   paletteByName(map,'default',DEFAULT);
   function visit(id,parent,stack){if(stack.has(id))return;const node=json.nodes?.[id];if(!node)return;stack.add(id);const matrix=mat4Mul(parent,nodeMatrix(node));
     if(node.mesh!==undefined){const mesh=json.meshes?.[node.mesh];if(mesh)for(const p of mesh.primitives||[]){if((p.mode??4)!==4||p.attributes?.POSITION===undefined)continue;
@@ -475,6 +476,9 @@ function parseGLTFScene(doc,buffers){const json=doc;
       const material=json.materials?.[p.material]||{},pbr=material.pbrMetallicRoughness||{},spec=material.extensions?.KHR_materials_pbrSpecularGlossiness;
       const colour=pbr.baseColorFactor||spec?.diffuseFactor||[1,1,1,1];
       const mat=paletteByName(map,'gltf-'+(p.material??0),colour.slice(0,3));
+      // glTF BLEND materials (including transparent glazing) require per-material opacity.
+      // Keep OPAQUE materials fully opaque even if baseColorFactor's alpha is less than 1.
+      materialOpacities[mat]=material.alphaMode==='BLEND'?Math.max(0.02,Math.min(1,colour[3]??1)):1;
       const texInfo=pbr.baseColorTexture||spec?.diffuseTexture;
       const transform=texInfo?.extensions?.KHR_texture_transform||{};
       const texSet=transform.texCoord??texInfo?.texCoord??0;
@@ -493,7 +497,7 @@ function parseGLTFScene(doc,buffers){const json=doc;
     for(const child of node.children||[])visit(child,matrix,stack);stack.delete(id);
   }
   const roots=json.scenes?.[json.scene??0]?.nodes||json.nodes?.map((_,i)=>i)||[];for(const id of roots)visit(id,identity(),new Set());if(!positions.length)throw Error('No triangle geometry found in glTF.');
-  return{positions:new Float32Array(positions),uvs:new Float32Array(uvs),vertexColours:hasVertexColours?new Float32Array(vertexColours):null,materials:new Uint16Array(materials),palette:materialPalette(map),materialImages,normalisedMetres:true};
+  return{positions:new Float32Array(positions),uvs:new Float32Array(uvs),vertexColours:hasVertexColours?new Float32Array(vertexColours):null,materials:new Uint16Array(materials),palette:materialPalette(map),materialImages,materialOpacities,normalisedMetres:true};
 }
 async function loadGLTFTextures(loaded,doc,buffers,referer){loaded.textures=[];loaded.textureMaterials=[];
  const cached=new Map(),miss=[];
@@ -588,7 +592,7 @@ async function loadPackageModel(model){if(!model)return;let loaded,ext=fileExt(m
  else if(ext==='3ds')loaded=parse3DS(buf);
  else if(ext==='3mf')loaded=await parse3MF(buf);
  else throw Error('Unsupported file format: '+ext);
- if(!loaded.positions?.length)throw Error('No readable triangles in '+model.path);if(loaded.textures?.length)notice=(notice?notice+' · ':'')+loaded.textures.length+' image texture(s) loaded';
+ if(!loaded.positions?.length)throw Error('No readable triangles in '+model.path);if(loaded.textures?.length)notice=(notice?notice+' · ':'')+loaded.textures.length+' colour image texture(s) loaded';
  if(loaded.normalisedMetres){$('unit').value='1';$('scale').value='1';}
  source=loaded;currentName=model.name;afterSource();const info=[packageModels.length>1?packageModels.length+' models available':'',packageAssets.length+' package files',notice,loaded.notice].filter(Boolean);$('packageInfo').textContent=info.join(' · ');
  if(notice||loaded.notice)warn([notice,loaded.notice].filter(Boolean).join(' '));
@@ -643,8 +647,8 @@ function syncSlice(){$('sliceControls').classList.toggle('hidden',$('sliceMode')
 function applyUnitScale(){if(!source)return;try{modelScale=getMultiplier();modelGL=destroyMesh(modelGL);sourceGeometry=makeSourceGeometry();modelGL=uploadSourceMeshes(sourceGeometry);fitCamera();estimate();if(gridStats){warn('Model scale changed. Press “Voxelise model” again to update the voxel grid.');}}catch(e){setStatus(e.message,'error');}}
 // Minimal WebGL viewer: independent of any online library/CDN.
 let prog=null,loc={},camera={yaw:.65,pitch:.42,distance:8,target:[0,1,0],pan:[0,0,0]},cameraInit=null,drawQueued=false,showGrid=true;
-const vertexShader=`attribute vec3 aPos;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uProj,uView;varying vec3 vColor,vNormal;varying vec2 vUV;void main(){vColor=aColor;vNormal=aNormal;vUV=aUV;gl_Position=uProj*uView*vec4(aPos,1.0);}`;
-const fragmentShader=`precision mediump float;varying vec3 vColor,vNormal;varying vec2 vUV;uniform float uOpacity;uniform float uLight;uniform float uTextured;uniform sampler2D uSampler;void main(){float light=0.64+0.34*max(dot(normalize(vNormal),normalize(vec3(0.48,0.84,0.49))),0.0);vec4 tex=uTextured>0.5?texture2D(uSampler,vec2(vUV.x,1.0-vUV.y)):vec4(1.0);if(tex.a<0.08)discard;gl_FragColor=vec4(vColor*tex.rgb*mix(1.0,light,uLight),uOpacity*tex.a);}`;
+const vertexShader=`precision highp float;attribute vec3 aPos;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uProj,uView;varying vec3 vColor,vNormal;varying highp vec2 vUV;void main(){vColor=aColor;vNormal=aNormal;vUV=aUV;gl_Position=uProj*uView*vec4(aPos,1.0);}`;
+const fragmentShader=`precision highp float;varying vec3 vColor,vNormal;varying highp vec2 vUV;uniform float uOpacity;uniform float uLight;uniform float uTextured;uniform sampler2D uSampler;void main(){float light=0.64+0.34*max(dot(normalize(vNormal),normalize(vec3(0.48,0.84,0.49))),0.0);vec4 tex=uTextured>0.5?texture2D(uSampler,vec2(vUV.x,1.0-vUV.y)):vec4(1.0);if(tex.a<0.08)discard;gl_FragColor=vec4(vColor*tex.rgb*mix(1.0,light,uLight),uOpacity*tex.a);}`;
 function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
 function initialiseGL(){if(!gl)return;prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vertexShader));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fragmentShader));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);for(const v of ['aPos','aNormal','aColor','aUV'])loc[v]=gl.getAttribLocation(prog,v);for(const v of ['uProj','uView','uOpacity','uLight','uTextured','uSampler'])loc[v]=gl.getUniformLocation(prog,v);gl.clearColor(.045,.075,.103,1);gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);}
 function uploadMesh(vertices,indices,stride=9,texId=0){if(!vertices)return null;if(!gl)return{vertices,indices,count:indices?indices.length:vertices.length/stride,hasIndex:!!indices,stride,texId};const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);const result={buffer:b,index:null,count:indices?indices.length:vertices.length/stride,hasIndex:!!indices,stride,texId};
@@ -654,6 +658,7 @@ function mat4Perspective(fovy,aspect,near,far){const f=1/Math.tan(fovy/2),out=ne
 function mat4LookAt(eye,center,up){const z=eye.map((n,k)=>n-center[k]),zl=Math.hypot(...z)||1;for(let k=0;k<3;k++)z[k]/=zl;const x=[up[1]*z[2]-up[2]*z[1],up[2]*z[0]-up[0]*z[2],up[0]*z[1]-up[1]*z[0]],xl=Math.hypot(...x)||1;for(let k=0;k<3;k++)x[k]/=xl;const y=[z[1]*x[2]-z[2]*x[1],z[2]*x[0]-z[0]*x[2],z[0]*x[1]-z[1]*x[0]];
  return new Float32Array([x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-(x[0]*eye[0]+x[1]*eye[1]+x[2]*eye[2]),-(y[0]*eye[0]+y[1]*eye[1]+y[2]*eye[2]),-(z[0]*eye[0]+z[1]*eye[1]+z[2]*eye[2]),1]);}
 function drawMesh(mesh,proj,view,opacity,light){if(!mesh)return;if(mesh.groups){for(const group of mesh.groups)drawMesh(group,proj,view,opacity,light);return;}
+ opacity*=mesh.alpha??1;
  gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);const stride=mesh.stride*4;
  gl.vertexAttribPointer(loc.aPos,3,gl.FLOAT,false,stride,0);gl.vertexAttribPointer(loc.aNormal,3,gl.FLOAT,false,stride,12);gl.vertexAttribPointer(loc.aColor,3,gl.FLOAT,false,stride,24);
  if(mesh.stride===11){gl.enableVertexAttribArray(loc.aUV);gl.vertexAttribPointer(loc.aUV,2,gl.FLOAT,false,stride,36);}else{gl.disableVertexAttribArray(loc.aUV);gl.vertexAttrib2f(loc.aUV,0,0);}
@@ -669,9 +674,9 @@ function render(){if(software){renderSoftware();return;}if(!gl||!prog)return;con
  const far=Math.max(500,maxSize*20+camera.distance*4),proj=mat4Perspective(Math.PI/4,w/h,.005,far);
  const cp=Math.cos(camera.pitch),sp=Math.sin(camera.pitch),sy=Math.sin(camera.yaw),cy=Math.cos(camera.yaw),t=camera.target.map((v,k)=>v+camera.pan[k]),eye=[t[0]+camera.distance*cp*sy,t[1]+camera.distance*sp,t[2]+camera.distance*cp*cy];const view=mat4LookAt(eye,t,[0,1,0]);
  if(showGrid)drawGround(proj,view);
- if(viewMode==='source'||!voxelGL)drawMesh(modelGL,proj,view,1,1);
+ if(viewMode==='source'||!voxelGL){gl.disable(gl.CULL_FACE);drawMesh(modelGL,proj,view,1,1);gl.enable(gl.CULL_FACE);}
  else if(viewMode==='voxels')drawMesh(voxelGL,proj,view,readNum('opacity',100)/100,1);
- else {drawMesh(modelGL,proj,view,1,1);drawMesh(voxelGL,proj,view,readNum('opacity',100)/100*.80,1);}
+ else {gl.disable(gl.CULL_FACE);drawMesh(modelGL,proj,view,1,1);gl.enable(gl.CULL_FACE);drawMesh(voxelGL,proj,view,readNum('opacity',100)/100*.80,1);}
 }
 let lastSoftwareFrame=0;
 function renderSoftware(){
@@ -686,7 +691,7 @@ function renderSoftware(){
   if(showGrid&&source){const size=Math.max(4,Math.max(...source.rawBounds.size)*modelScale*2),n=18,lo=-size/2;
     ctx.strokeStyle='#274652';ctx.lineWidth=.7;ctx.beginPath();for(let i=0;i<=n;i++){const v=lo+size*i/n;for(const e of [[[v,0,lo],[v,0,-lo]],[[lo,0,v],[-lo,0,v]]]){const a=project(...e[0]),b=project(...e[1]);if(a&&b){ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);}}}ctx.stroke();}
   const faces=[];
-  function collect(mesh,opacity){if(mesh?.groups){for(const group of mesh.groups)collect(group,opacity);return;}if(!mesh||!mesh.vertices)return;const arr=mesh.vertices;
+  function collect(mesh,opacity){if(mesh?.groups){for(const group of mesh.groups)collect(group,opacity);return;}if(!mesh||!mesh.vertices)return;opacity*=mesh.alpha??1;const arr=mesh.vertices;
     if(mesh.hasIndex){const count=mesh.count/6,step=Math.max(1,Math.ceil(count/7500));
       for(let i=0;i<count;i+=step){const p=[],off=i*36;for(let k=0;k<4;k++){const b=off+k*9,q=project(arr[b],arr[b+1],arr[b+2]);if(!q){p.length=0;break;}p.push(q);}if(p.length===4){const nx=arr[off+3],ny=arr[off+4],nz=arr[off+5];if(nx*forward[0]+ny*forward[1]+nz*forward[2]<-.03)continue;const shade=.67+.33*Math.max(0,nx*.49+ny*.85+nz*.47);faces.push({p,c:[arr[off+6]*shade,arr[off+7]*shade,arr[off+8]*shade],opacity,depth:p.reduce((a,b)=>a+b[2],0)/4});}}
     }else{const count=mesh.count/3,step=Math.max(1,Math.ceil(count/7500));for(let i=0;i<count;i+=step){const p=[],off=i*mesh.stride*3;for(let k=0;k<3;k++){const b=off+k*mesh.stride,q=project(arr[b],arr[b+1],arr[b+2]);if(!q){p.length=0;break;}p.push(q);}if(p.length===3){const nx=arr[off+3],ny=arr[off+4],nz=arr[off+5],shade=.67+.33*Math.max(0,nx*.49+ny*.85+nz*.47);faces.push({p,c:[arr[off+6]*shade,arr[off+7]*shade,arr[off+8]*shade],opacity,depth:p.reduce((a,b)=>a+b[2],0)/3});}}}}
