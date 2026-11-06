@@ -31,20 +31,20 @@
 </style></head>
 <body class="component-app">
 <div class="app">
-<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">Components · Beta</span></strong><small>Group model components · preserve textures</small></div></div><div class="topbuttons"><a class="btn ghost" style="text-decoration:none" href="../">Voxeliser V9</a><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
+<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">Components · Beta 2</span></strong><small>Group model components · preserve textures</small></div></div><div class="topbuttons"><a class="btn ghost" style="text-decoration:none" href="../">Voxeliser V9</a><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
 <div class="work">
 <aside class="sidebar">
 <section class="panel full"><h2 class="paneltitle">1 · Source model</h2><label class="upload" for="fileInput"><b>↑ Import model or ZIP package</b><small>OBJ · GLB · glTF · STL · PLY · OFF · DAE · 3DS · 3MF · ZIP (including nested ZIPs)</small></label><input id="fileInput" type="file" multiple accept=".obj,.stl,.glb,.gltf,.mtl,.bin,.ply,.off,.dae,.3ds,.3mf,.zip,.jpg,.jpeg,.png,.webp,.fbx,.usdz,.blend,.max" hidden><div class="row" style="margin-top:8px"><button class="btn tiny grow" id="folderLoad" type="button">Import whole folder</button><input id="folderInput" type="file" multiple webkitdirectory directory hidden><span class="hint grow" style="margin:0">Keeps MTL, textures and glTF assets together</span></div><div id="modelPickerRow" class="field hidden" style="margin-top:12px"><label class="numlabel" for="modelPicker">Model in package</label><select id="modelPicker"></select></div><p class="filemeta" id="packageInfo" style="margin:9px 0 0"></p><p class="filemeta" id="sourceInfo" style="margin:10px 0">Sample: Torus · ready to organise</p><div class="row"><span class="subhead" style="margin:0">Samples</span><select id="demoSelect" class="grow" aria-label="Sample model"><option value="torus">Torus / doughnut</option><option value="house">Simple house</option><option value="sphere">Sphere</option></select><button class="btn tiny" id="loadDemo">Load</button></div><hr class="divider"><div class="two"><div><label class="numlabel" for="unit">Input units</label><select id="unit"><option value="1">Metres</option><option value="0.01">Centimetres</option><option value="0.001">Millimetres</option><option value="0.0254">Inches</option><option value="0.3048">Feet</option></select></div><div><label class="numlabel" for="scale">Additional scale</label><input id="scale" type="number" min="0.00001" max="100000" step="any" value="1"></div></div><p class="hint">OBJ and STL don't reliably store real-world units. Set these before using a precise cell size.</p></section>
 <section class="panel" id="componentPanel">
 <h2 class="paneltitle">2 · Component organiser</h2>
-<p class="hint">Suggested groups use material names and surface orientation. The original geometry, UV mapping and textures remain unchanged. Select a material component below, then move, hide or isolate it.</p>
+<p class="hint">Suggested groups use material names and surface orientation. The original geometry, UV mapping and textures remain unchanged. Select a material below, then optionally split it into disconnected pieces. Each piece retains its original material, textures and geometry.</p>
 <div class="component-actions" style="margin-top:12px">
-<button class="btn tiny" id="componentNew">+ New group</button><button class="btn tiny" id="componentShowAll">Show all</button><button class="btn tiny" id="componentReset">Auto group</button><button class="btn tiny" id="componentUndo">Undo</button>
+<button class="btn tiny" id="componentNew">+ New group</button><button class="btn tiny" id="componentShowAll">Show all</button><button class="btn tiny" id="componentReset">Auto group</button><button class="btn tiny" id="componentSplit">Split into pieces</button><button class="btn tiny" id="componentUndo">Undo</button>
 </div>
 <label class="switchline" style="margin-top:12px"><span class="subhead">Highlight selected component</span><input type="checkbox" id="componentHighlight" checked></label>
 <label class="switchline" style="margin-top:9px"><span class="subhead">Multiple selection</span><input type="checkbox" id="componentMulti"></label>
 <input id="componentSearch" type="search" placeholder="Search components / materials">
-<div id="componentSummary" class="component-info"></div>
+<div id="componentSummary" class="component-info"></div><p class="hint">Select one original material, then Split into pieces. Disconnected geometry separates automatically. Geometry actually joined together will require manual selection in a later update.</p>
 <div id="componentList"></div>
 <hr class="divider"><div id="componentSelection" class="component-info">Select a component.</div>
 <label class="numlabel" for="componentTarget" style="margin-top:10px">Move selected components to</label><select id="componentTarget"></select>
@@ -413,7 +413,7 @@ function demoHouse(){const a=[],m=[];const col=[[0,0,0],[.65,.74,.81],[.82,.50,.
  quad([1.25,1.25,-2.005],[2.10,1.25,-2.005],[2.10,2.23,-2.005],[1.25,2.23,-2.005],3);
  return geometryFromTriangles(a,m,col);}
 function pickDemo(which){packageAssets=[];packageModels=[];assetBytes=0;$('modelPickerRow').classList.add('hidden');$('packageInfo').textContent='';if(which==='torus')source=demoTorus();else if(which==='sphere')source=demoSphere();else source=demoHouse();currentName='Sample '+(which==='torus'?'torus':which==='sphere'?'sphere':'house');afterSource();}
-function afterSource(){gridStats=null;modelScale=getMultiplier(); source.rawBounds=boundsFor(source.positions);$('sourceInfo').textContent=currentName+' · '+fmt(source.materials.length)+' triangles · '+source.rawBounds.size.map(v=>v.toFixed(2)).join(' × ')+' model units';
+function afterSource(){gridStats=null;componentTriangleMap=null;modelScale=getMultiplier(); source.rawBounds=boundsFor(source.positions);$('sourceInfo').textContent=currentName+' · '+fmt(source.materials.length)+' triangles · '+source.rawBounds.size.map(v=>v.toFixed(2)).join(' × ')+' model units';
  $('count').textContent='—';$('gridDims').textContent='—';$('quads').textContent='—';$('elapsed').textContent='—';$('realSize').textContent='No voxel grid generated yet.';
  $('exportJSON').disabled=true;$('exportOBJ').disabled=true;meshLimited=false;voxelGL=destroyMesh(voxelGL);sourceGeometry=makeSourceGeometry();modelGL=destroyMesh(modelGL);uploadSourceTextures();modelGL=uploadSourceMeshes(sourceGeometry);
  fitCamera();estimate();const glazes=Object.values(source.materialOpacities||{}).filter(a=>a<.999);const strength=glazes.some(a=>a>.60)?55:100;$('glassStrength').value=strength;$('glassStrengthOut').textContent=strength+'%';viewMode='source';syncView();setStatus('Model loaded. Review components below.');warn('');componentsPrepare();}
@@ -421,9 +421,9 @@ function makeSourceGeometry(){if(!source)return null;const pos=source.positions,
  const groups=new Map();
  for(let i=0;i<pos.length;i+=9){let p=[];for(let j=0;j<9;j+=3)p.push([(pos[i+j]-midX)*sc,(pos[i+j+1]-minY)*sc,(pos[i+j+2]-midZ)*sc]);
  const e1=p[1].map((v,k)=>v-p[0][k]),e2=p[2].map((v,k)=>v-p[0][k]),nx=e1[1]*e2[2]-e1[2]*e2[1],ny=e1[2]*e2[0]-e1[0]*e2[2],nz=e1[0]*e2[1]-e1[1]*e2[0],norm=Math.hypot(nx,ny,nz)||1;
- const materialId=mats[i/9],c=pal[materialId]||DEFAULT,texId=source.textureMaterials?.[materialId]||0,vertexColours=source.vertexColours;
+ const materialId=mats[i/9],partId=componentTriangleMap?.[i/9]??materialId,c=pal[materialId]||DEFAULT,texId=source.textureMaterials?.[materialId]||0,vertexColours=source.vertexColours;
  const alpha=source.materialOpacities?.[materialId]??1,key=texId+':'+alpha;
- if(!groups.has(materialId))groups.set(materialId,{texId,alpha,partId:materialId,vertex:[]});const out=groups.get(materialId).vertex;
+ if(!groups.has(partId))groups.set(partId,{texId,alpha,partId,vertex:[]});const out=groups.get(partId).vertex;
  for(let j=0;j<3;j++){out.push(p[j][0],p[j][1],p[j][2],nx/norm,ny/norm,nz/norm,c[0]*(vertexColours?.[(i/3+j)*3]??1),c[1]*(vertexColours?.[(i/3+j)*3+1]??1),c[2]*(vertexColours?.[(i/3+j)*3+2]??1),source.uvs?.[(i/3+j)*2]||0,source.uvs?.[(i/3+j)*2+1]||0);}}
  return{groups:[...groups.values()].sort((a,b)=>b.alpha-a.alpha).map(g=>({texId:g.texId,alpha:g.alpha,vertex:new Float32Array(g.vertex),partId:g.partId}))};}
 function uploadSourceTextures(){if(!gl)return;for(const t of modelTexturesGL)if(t)gl.deleteTexture(t);modelTexturesGL=[null];
@@ -798,16 +798,18 @@ function runLoop(){render();requestAnimationFrame(runLoop);}
 
 /* Material-level component grouping · original geometry and source UV data are immutable. */
 const COMPONENT_CATEGORIES=['Roof','Walls','Windows & Glass','Doors','Floors','Ground & Landscaping','Other'];
-let componentParts=[],componentGroups=new Map(),componentSelected=new Set(),componentTint=true,componentUndo=[],componentLookup=new Map();
+let componentParts=[],componentBaseParts=[],componentGroups=new Map(),componentSelected=new Set(),componentTint=true,componentUndo=[],componentLookup=new Map(),componentTriangleMap=null,componentSplitIds=new Set(),componentIsolated=null;
 const componentMsg=msg=>$('componentStatus').textContent=msg;
 const componentEl=(tag,label,cls)=>{const el=document.createElement(tag);if(label!==undefined)el.textContent=label;if(cls)el.className=cls;return el;};
 const componentStorageKey=()=> 'voxel-lab-components-v1:'+currentName+':'+(source?.materials?.length||0);
-const componentSnapshot=()=>({groups:[...componentGroups],parts:componentParts.map(p=>[p.id,p.group])});
+const componentSnapshot=()=>({groups:[...componentGroups],parts:componentParts.map(p=>[p.id,p.group]),splits:[...componentSplitIds]});
 function componentRemember(){componentUndo.push(JSON.stringify(componentSnapshot()));if(componentUndo.length>25)componentUndo.shift();}
 function componentStore(){try{localStorage.setItem(componentStorageKey(),JSON.stringify(componentSnapshot()));}catch(e){}}
 function componentApply(data){if(!Array.isArray(data.groups)||!Array.isArray(data.parts))throw Error('Invalid groups file.');
  const groups=new Map(data.groups.filter(e=>Array.isArray(e)&&typeof e[0]==='string'&&e[0].length<90).map(e=>[e[0],{visible:e[1]?.visible!==false,closed:!!e[1]?.closed}]));
  if(!groups.size)throw Error('No valid groups found.');
+ const wanted=Array.isArray(data.splits)?data.splits.filter(Number.isInteger):[];
+ if(JSON.stringify([...componentSplitIds].sort((a,b)=>a-b))!==JSON.stringify([...new Set(wanted)].sort((a,b)=>a-b)))componentRestoreSplits(wanted);
  componentGroups=groups;const byId=new Map(data.parts.map(([i,g])=>[Number(i),g]));
  for(const part of componentParts){const g=byId.get(part.id);if(typeof g==='string'&&groups.has(g))part.group=g;}
  componentDraw();
@@ -826,8 +828,56 @@ function componentCategory(p){
  if(y>.18&&y<.85&&flat<.36)return 'Walls';
  return 'Other';
 }
+
+function componentRefreshMeshes(){modelGL=destroyMesh(modelGL);sourceGeometry=makeSourceGeometry();modelGL=uploadSourceMeshes(sourceGeometry);}
+function componentSubpart(base,indices,id,name){
+ const pos=source.positions,p={id,name,materialId:base.id,triangles:indices.length,indices,group:base.group,alpha:base.alpha,min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity],upNormal:0,totalNormal:0};
+ for(const t of indices){const o=t*9;for(let j=0;j<9;j+=3)for(let k=0;k<3;k++){const v=pos[o+j+k];p.min[k]=Math.min(p.min[k],v);p.max[k]=Math.max(p.max[k],v);}
+ const ax=pos[o+3]-pos[o],ay=pos[o+4]-pos[o+1],az=pos[o+5]-pos[o+2],bx=pos[o+6]-pos[o],by=pos[o+7]-pos[o+1],bz=pos[o+8]-pos[o+2];
+ const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;p.upNormal+=Math.abs(ny);p.totalNormal+=Math.hypot(nx,ny,nz);}
+ return p;
+}
+function componentSplitMaterial(id){
+ const original=componentParts.find(p=>p.id===id&&componentBaseParts.some(b=>b.id===id));
+ if(!original)return {count:0,message:'Select an original, unsplit material.'};
+ const tris=original.indices,n=tris.length;
+ if(n>250000)return {count:0,message:'This material contains '+fmt(n)+' triangles. Split is limited to 250,000 triangles per material to avoid exhausting phone memory.'};
+ if(n<2)return {count:0,message:'Not enough triangles to split.'};
+ const parent=new Int32Array(n),size=new Int32Array(n);
+ for(let i=0;i<n;i++){parent[i]=i;size[i]=1;}
+ function find(i){while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i];}return i;}
+ function join(a,b){a=find(a);b=find(b);if(a===b)return;if(size[a]<size[b]){const z=a;a=b;b=z;}parent[b]=a;size[a]+=size[b];}
+ const edgeMap=new Map(),pos=source.positions,inv=1/Math.max(1e-8,Math.max(...source.rawBounds.size)*0.000002);
+ function point(o){return Math.round(pos[o]*inv)+','+Math.round(pos[o+1]*inv)+','+Math.round(pos[o+2]*inv);}
+ for(let i=0;i<n;i++){const o=tris[i]*9,a=point(o),b=point(o+3),c=point(o+6);
+  for(const [v,w] of [[a,b],[b,c],[c,a]]){if(v===w)continue;const key=v<w?v+'|'+w:w+'|'+v,last=edgeMap.get(key);if(last===undefined)edgeMap.set(key,i);else join(i,last);}
+ }
+ const islands=new Map();
+ for(let i=0;i<n;i++){const k=find(i);let arr=islands.get(k);if(!arr)islands.set(k,arr=[]);arr.push(tris[i]);}
+ if(islands.size<2)return {count:0,message:'This material is one edge-connected mesh. Manual face selection would be needed to separate it.'};
+ const ordered=[...islands.values()].sort((a,b)=>b.length-a.length||a[0]-b[0]);
+ const threshold=Math.max(10,Math.floor(n/8000)),keep=ordered.filter(x=>x.length>=threshold).slice(0,119),remaining=ordered.filter(x=>!keep.includes(x));
+ const chunks=keep.slice();if(remaining.length)chunks.push(remaining.flat());
+ if(chunks.length<2)return {count:0,message:'No separate pieces large enough to isolate.'};
+ if(!componentTriangleMap)componentTriangleMap=new Uint32Array(source.materials);
+ const parts=[],base=100000000+id*1024;
+ for(let i=0;i<chunks.length;i++){const pieceId=base+i+1;
+  const name=original.name+' · '+(i===chunks.length-1&&remaining.length?'Small details':'Piece '+String(i+1).padStart(2,'0'));
+  const part=componentSubpart(original,chunks[i],pieceId,name);parts.push(part);
+  for(const t of chunks[i])componentTriangleMap[t]=pieceId;
+ }
+ componentParts.splice(componentParts.indexOf(original),1,...parts);componentLookup.delete(id);
+ for(const p of parts)componentLookup.set(p.id,p);componentSplitIds.add(id);
+ return {count:parts.length,message:'Split '+original.name+' into '+parts.length+' selectable pieces. Original geometry, UVs and textures preserved.'};
+}
+function componentRestoreSplits(ids){
+ componentParts=componentBaseParts.map(p=>({...p}));componentLookup=new Map(componentParts.map(p=>[p.id,p]));componentTriangleMap=null;componentSplitIds.clear();
+ for(const id of [...new Set(ids)].sort((a,b)=>a-b))componentSplitMaterial(id);
+ componentSelected.clear();componentIsolated=null;componentRefreshMeshes();
+}
+
 function componentsPrepare(){
- componentParts=[];componentLookup.clear();componentSelected.clear();componentUndo=[];
+ componentParts=[];componentBaseParts=[];componentTriangleMap=null;componentSplitIds.clear();componentLookup.clear();componentSelected.clear();componentIsolated=null;componentUndo=[];
  componentGroups=new Map(COMPONENT_CATEGORIES.map(n=>[n,{visible:true,closed:false}]));
  if(!source?.positions?.length)return;
  const entries=new Map(),pos=source.positions;
@@ -839,18 +889,21 @@ function componentsPrepare(){
   const ax=pos[o+3]-pos[o],ay=pos[o+4]-pos[o+1],az=pos[o+5]-pos[o+2],bx=pos[o+6]-pos[o],by=pos[o+7]-pos[o+1],bz=pos[o+8]-pos[o+2];
   const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;p.upNormal+=Math.abs(ny);p.totalNormal+=Math.hypot(nx,ny,nz);
  }
- componentParts=[...entries.values()].sort((a,b)=>b.triangles-a.triangles);
- for(const part of componentParts){part.group=componentCategory(part);componentLookup.set(part.id,part);}
+ componentBaseParts=[...entries.values()].sort((a,b)=>b.triangles-a.triangles);
+ for(const p of componentBaseParts)p.group=componentCategory(p);
+ componentParts=componentBaseParts.map(p=>({...p}));for(const p of componentParts)componentLookup.set(p.id,p);
  try{const old=localStorage.getItem(componentStorageKey());if(old)componentApply(JSON.parse(old));}catch(e){}
  componentDraw();componentMsg(componentParts.length+' material components detected. Correct the suggested groups before exporting.');
 }
-function componentVisible(id){const part=componentLookup.get(id);return !part||componentGroups.get(part.group)?.visible!==false;}
+function componentVisible(id){const part=componentLookup.get(id);return (!componentIsolated||componentIsolated.has(id))&&(!part||componentGroups.get(part.group)?.visible!==false);}
 function componentDraw(){
  const list=$('componentList');if(!list)return;list.replaceChildren();
  const term=$('componentSearch').value.trim().toLowerCase();
  $('componentSummary').textContent=componentParts.length+' components · '+(source?.materials?.length||0).toLocaleString('en-AU')+' triangles · '+componentSelected.size+' selected';
  $('componentSelection').textContent=componentSelected.size?('Selected: '+componentParts.filter(p=>componentSelected.has(p.id)).slice(0,3).map(p=>p.name).join(', ')+(componentSelected.size>3?'…':'')):'Select a component from the list or by tapping the model.';
  $('componentMove').disabled=!componentSelected.size;$('componentIsolate').disabled=!componentSelected.size;$('componentUndo').disabled=!componentUndo.length;
+ const selectedId=componentSelected.size===1?[...componentSelected][0]:null;
+ $('componentSplit').disabled=selectedId===null||!componentBaseParts.some(p=>p.id===selectedId)||componentSplitIds.has(selectedId);
  const target=$('componentTarget'),old=target.value;target.replaceChildren();for(const [name] of componentGroups){const option=componentEl('option',name);option.value=name;target.append(option);}if(componentGroups.has(old))target.value=old;
  for(const [name,g] of componentGroups){
   const parts=componentParts.filter(p=>p.group===name&&(!term||name.toLowerCase().includes(term)||p.name.toLowerCase().includes(term)));
@@ -872,10 +925,17 @@ function componentChange(action,msg){componentRemember();action();componentStore
 $('componentHighlight').onchange=e=>{componentTint=e.target.checked;};
 $('componentSearch').oninput=componentDraw;
 $('componentNew').onclick=()=>{const name=prompt('New component group')?.trim();if(!name)return;if(name.length>75||componentGroups.has(name)){componentMsg('Use a unique group name under 76 characters.');return;}componentChange(()=>componentGroups.set(name,{visible:true,closed:false}),'Created '+name+'.');};
-$('componentShowAll').onclick=()=>componentChange(()=>{for(const g of componentGroups.values())g.visible=true;},'Showing all components.');
+$('componentShowAll').onclick=()=>componentChange(()=>{componentIsolated=null;for(const g of componentGroups.values())g.visible=true;},'Showing all components.');
 $('componentClear').onclick=()=>{componentSelected.clear();componentDraw();};
+ $('componentSplit').onclick=()=>{if(componentSelected.size!==1)return;
+  const id=[...componentSelected][0];componentRemember();componentMsg('Detecting disconnected mesh sections…');
+  setTimeout(()=>{try{const result=componentSplitMaterial(id);
+   if(!result.count){componentUndo.pop();componentDraw();componentMsg(result.message);return;}
+   componentSelected.clear();componentIsolated=null;componentRefreshMeshes();componentStore();componentDraw();componentMsg(result.message);
+  }catch(err){componentUndo.pop();componentDraw();componentMsg('Split failed: '+err.message);console.error(err);}},30);
+ };
 $('componentMove').onclick=()=>{const to=$('componentTarget').value;if(!componentSelected.size||!componentGroups.has(to))return;componentChange(()=>{for(const p of componentParts)if(componentSelected.has(p.id))p.group=to;},'Moved '+componentSelected.size+' components to '+to+'.');};
-$('componentIsolate').onclick=()=>{const names=new Set(componentParts.filter(p=>componentSelected.has(p.id)).map(p=>p.group));if(!names.size)return;componentChange(()=>{for(const [n,g] of componentGroups)g.visible=names.has(n);},'Showing selected component groups.');};
+$('componentIsolate').onclick=()=>{if(!componentSelected.size)return;componentIsolated=new Set(componentSelected);for(const g of componentGroups.values())g.visible=true;componentDraw();componentMsg('Only selected pieces visible. Select Show all to restore.');};
 $('componentUndo').onclick=()=>{const old=componentUndo.pop();if(old){componentApply(JSON.parse(old));componentStore();componentMsg('Undid last edit.');}};
 $('componentReset').onclick=()=>{if(!componentParts.length)return;componentChange(()=>{for(const p of componentParts)p.group=componentCategory(p);for(const g of componentGroups.values())g.visible=true;},'Restored automatic grouping suggestions.');};
 $('componentExport').onclick=()=>{
