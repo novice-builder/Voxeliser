@@ -83,15 +83,19 @@ function markExterior(data,W,H,D){
 }
 function generate(msg){const t0=performance.now();const a=new Float32Array(msg.positions), triMaterials=new Uint16Array(msg.materials), ntri=a.length/9;
   const {W,H,D,cell,origin,bounds,mode,thickness,maxCells}=msg;
- const uvs=msg.uvs?new Float32Array(msg.uvs):null,texMats=msg.textureMaterials||[],textures=msg.textures||[],sampleKeys=new Map();
- function texVoxel(t,tx,mat,x,y,z,coords){const texture=textures[tx-1];if(!texture||!uvs)return mat;
- const q=coords;const e0=[q[3]-q[0],q[4]-q[1],q[5]-q[2]],e1=[q[6]-q[0],q[7]-q[1],q[8]-q[2]],v=[x-q[0],y-q[1],z-q[2]];
- const a=e0[0]*e0[0]+e0[1]*e0[1]+e0[2]*e0[2],b=e0[0]*e1[0]+e0[1]*e1[1]+e0[2]*e1[2],c=e1[0]*e1[0]+e1[1]*e1[1]+e1[2]*e1[2],d=e0[0]*v[0]+e0[1]*v[1]+e0[2]*v[2],e=e1[0]*v[0]+e1[1]*v[1]+e1[2]*v[2],den=a*c-b*b;
- if(Math.abs(den)<1e-12)return mat;let wa=(d*c-e*b)/den,wb=(e*a-d*b)/den;wa=Math.max(0,wa);wb=Math.max(0,wb);let sum=Math.max(1,wa+wb);wa/=sum;wb/=sum;const wc=1-wa-wb;
- const u=wc*uvs[t*6]+wa*uvs[t*6+2]+wb*uvs[t*6+4],vv=wc*uvs[t*6+1]+wa*uvs[t*6+3]+wb*uvs[t*6+5];
- const wrap=a=>a-Math.floor(a);const ix=Math.min(texture.width-1,Math.floor(wrap(u)*texture.width)),iy=Math.min(texture.height-1,Math.floor(wrap(1-vv)*texture.height)),idx=(iy*texture.width+ix)*4,pixels=texture.pixels;
- if(pixels[idx+3]<24)return 0;const base=surfacePalette[mat]||[1,1,1];
- const r=Math.min(31,Math.round(pixels[idx]*base[0]/255*31)),g=Math.min(31,Math.round(pixels[idx+1]*base[1]/255*31)),bl=Math.min(31,Math.round(pixels[idx+2]*base[2]/255*31));
+ const uvs=msg.uvs?new Float32Array(msg.uvs):null,vColors=msg.vertexColours?new Float32Array(msg.vertexColours):null,texMats=msg.textureMaterials||[],textures=msg.textures||[],sampleKeys=new Map();
+ function texVoxel(t,tx,mat,x,y,z,coords){const texture=tx?textures[tx-1]:null;
+ if(!texture&&!vColors)return mat;
+ const q=coords,e0=[q[3]-q[0],q[4]-q[1],q[5]-q[2]],e1=[q[6]-q[0],q[7]-q[1],q[8]-q[2]],v=[x-q[0],y-q[1],z-q[2]];
+ const a=e0[0]**2+e0[1]**2+e0[2]**2,b=e0[0]*e1[0]+e0[1]*e1[1]+e0[2]*e1[2],c=e1[0]**2+e1[1]**2+e1[2]**2,d=e0[0]*v[0]+e0[1]*v[1]+e0[2]*v[2],e=e1[0]*v[0]+e1[1]*v[1]+e1[2]*v[2],den=a*c-b*b;
+ if(Math.abs(den)<1e-12)return mat;let wa=Math.max(0,(d*c-e*b)/den),wb=Math.max(0,(e*a-d*b)/den);const sum=Math.max(1,wa+wb);wa/=sum;wb/=sum;const wc=1-wa-wb;
+ let R=1,G=1,B=1;
+ if(texture&&uvs){const u=wc*uvs[t*6]+wa*uvs[t*6+2]+wb*uvs[t*6+4],vv=wc*uvs[t*6+1]+wa*uvs[t*6+3]+wb*uvs[t*6+5];
+ const wrap=(value,mode)=>mode===33071?Math.max(0,Math.min(0.999999,value)):mode===33648?1-Math.abs((value%2+2)%2-1):value-Math.floor(value);
+ const ix=Math.min(texture.width-1,Math.floor(wrap(u,texture.wrapS)*texture.width)),iy=Math.min(texture.height-1,Math.floor(wrap(1-vv,texture.wrapT)*texture.height)),idx=(iy*texture.width+ix)*4,pixels=texture.pixels;
+ if(pixels[idx+3]<24)return 0;R=pixels[idx]/255;G=pixels[idx+1]/255;B=pixels[idx+2]/255;}
+ if(vColors){const k=t*9;R*=wc*vColors[k]+wa*vColors[k+3]+wb*vColors[k+6];G*=wc*vColors[k+1]+wa*vColors[k+4]+wb*vColors[k+7];B*=wc*vColors[k+2]+wa*vColors[k+5]+wb*vColors[k+8];}
+ const base=surfacePalette[mat]||[1,1,1];const r=Math.min(31,Math.max(0,Math.round(R*base[0]*31))),g=Math.min(31,Math.max(0,Math.round(G*base[1]*31))),bl=Math.min(31,Math.max(0,Math.round(B*base[2]*31)));
  const key=(r<<10)|(g<<5)|bl;let id=sampleKeys.get(key);if(!id){id=surfacePalette.length;if(id>=65535)return mat;sampleKeys.set(key,id);surfacePalette.push([r/31,g/31,bl/31]);}return id;
  }const total=W*H*D;if(total>maxCells||total<1)throw Error('Grid too large ('+total.toLocaleString()+' cells). Lower the resolution or increase voxel size.');
   const data=new Uint16Array(total),half=cell*0.5000001, yz=W*H;
@@ -108,7 +112,7 @@ function generate(msg){const t0=performance.now();const a=new Float32Array(msg.p
     for(let z=za;z<=zb;z++){const cz=origin[2]+(z+.5)*cell;for(let y=ya;y<=yb;y++){const cy=origin[1]+(y+.5)*cell,n=z*yz+y*W;for(let x=xa;x<=xb;x++){
       if(data[n+x])continue;
       const cx=origin[0]+(x+.5)*cell;
-      if(triBox(x0-cx,y0-cy,z0-cz,x1-cx,y1-cy,z1-cz,x2-cx,y2-cy,z2-cz,half)){const id=tx?texVoxel(t,tx,mat,cx,cy,cz,coords):mat;if(id)data[n+x]=id;}
+      if(triBox(x0-cx,y0-cy,z0-cz,x1-cx,y1-cy,z1-cz,x2-cx,y2-cy,z2-cz,half)){const id=(tx||vColors)?texVoxel(t,tx,mat,cx,cy,cz,coords):mat;if(id)data[n+x]=id;}
     }}}
     if((t%Math.max(40,Math.floor(ntri/45)))===0)say('Intersecting model triangles',4+Math.round(65*t/ntri));
   }
@@ -384,15 +388,21 @@ function makeSourceGeometry(){if(!source)return null;const pos=source.positions,
  const groups=new Map();
  for(let i=0;i<pos.length;i+=9){let p=[];for(let j=0;j<9;j+=3)p.push([(pos[i+j]-midX)*sc,(pos[i+j+1]-minY)*sc,(pos[i+j+2]-midZ)*sc]);
  const e1=p[1].map((v,k)=>v-p[0][k]),e2=p[2].map((v,k)=>v-p[0][k]),nx=e1[1]*e2[2]-e1[2]*e2[1],ny=e1[2]*e2[0]-e1[0]*e2[2],nz=e1[0]*e2[1]-e1[1]*e2[0],norm=Math.hypot(nx,ny,nz)||1;
- const c=pal[mats[i/9]]||DEFAULT,texId=source.textureMaterials?.[mats[i/9]]||0;
+ const c=pal[mats[i/9]]||DEFAULT,texId=source.textureMaterials?.[mats[i/9]]||0,vertexColours=source.vertexColours;
  if(!groups.has(texId))groups.set(texId,[]);const out=groups.get(texId);
- for(let j=0;j<3;j++){out.push(p[j][0],p[j][1],p[j][2],nx/norm,ny/norm,nz/norm,c[0],c[1],c[2],source.uvs?.[(i/3+j)*2]||0,source.uvs?.[(i/3+j)*2+1]||0);}}
+ for(let j=0;j<3;j++){out.push(p[j][0],p[j][1],p[j][2],nx/norm,ny/norm,nz/norm,c[0]*(vertexColours?.[(i/3+j)*3]??1),c[1]*(vertexColours?.[(i/3+j)*3+1]??1),c[2]*(vertexColours?.[(i/3+j)*3+2]??1),source.uvs?.[(i/3+j)*2]||0,source.uvs?.[(i/3+j)*2+1]||0);}}
  return{groups:[...groups].map(([texId,vertex])=>({texId,vertex:new Float32Array(vertex)}))};}
 function uploadSourceTextures(){if(!gl)return;for(const t of modelTexturesGL)if(t)gl.deleteTexture(t);modelTexturesGL=[null];
  for(const src of source?.textures||[]){const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);
  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,src.width,src.height,0,gl.RGBA,gl.UNSIGNED_BYTE,src.pixels);
  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
- gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.REPEAT);
+ // WebGL1 requires CLAMP_TO_EDGE for non-power-of-two textures, otherwise they render black.
+ const isPOT=n=>(n&(n-1))===0,isWebGL2=typeof WebGL2RenderingContext!=='undefined'&&gl instanceof WebGL2RenderingContext;
+ const npot=!isPOT(src.width)||!isPOT(src.height);
+ const wrapEnum=n=>n===33071?gl.CLAMP_TO_EDGE:n===33648?gl.MIRRORED_REPEAT:gl.REPEAT;
+ const wrapS=!isWebGL2&&npot?gl.CLAMP_TO_EDGE:wrapEnum(src.wrapS);
+ const wrapT=!isWebGL2&&npot?gl.CLAMP_TO_EDGE:wrapEnum(src.wrapT);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,wrapS);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,wrapT);
  modelTexturesGL.push(tex);}}
 function uploadSourceMeshes(geom){return{groups:geom.groups.map(g=>uploadMesh(g.vertex,null,11,g.texId))};} 
 async function importFiles(list){if(busy)return;const files=[...list];const model=files.find(f=>/\.(obj|stl|glb)$/i.test(f.name));if(!model){setStatus('Choose an OBJ, STL or GLB model.','error');return;}
@@ -449,27 +459,61 @@ async function collectAssets(fileList){packageAssets=[];packageModels=[];assetBy
 }
 async function decodeDataURI(uri){const s=uri.match(/^data:[^,]*;base64,(.*)$/i);if(!s)throw Error('Only base64 data URIs are supported in glTF.');let binary=atob(s[1]);const b=new Uint8Array(binary.length);for(let i=0;i<binary.length;i++)b[i]=binary.charCodeAt(i);return b.buffer;}
 function parseGLTFScene(doc,buffers){const json=doc;
+  // GLTF accessors can use integer-normalised UVs and vertex colours. Those
+  // must be converted to 0..1 or the texture repeats thousands of times.
   function access(index){const a=json.accessors?.[index];if(!a)throw Error('Missing glTF accessor.');if(a.sparse)throw Error('Sparse glTF accessors are not supported yet.');const bv=json.bufferViews?.[a.bufferView];if(!bv)throw Error('Missing glTF buffer view.');const bin=buffers[bv.buffer];if(!bin)throw Error('Missing glTF binary buffer '+bv.buffer);const sz={5126:4,5125:4,5123:2,5122:2,5121:1,5120:1}[a.componentType];if(!sz)throw Error('Unsupported glTF accessor component type.');const nc={SCALAR:1,VEC2:2,VEC3:3,VEC4:4}[a.type];if(!nc)throw Error('Unsupported glTF accessor dimensions.');const stride=bv.byteStride||nc*sz,ofs=(bv.byteOffset||0)+(a.byteOffset||0),dv=new DataView(bin);
-    return i=>{const p=ofs+i*stride,out=[];if(p<0||p+nc*sz>dv.byteLength)throw Error('glTF accessor exceeds its buffer.');for(let j=0;j<nc;j++){let val,at=p+j*sz;switch(a.componentType){case 5126:val=dv.getFloat32(at,true);break;case 5125:val=dv.getUint32(at,true);break;case 5123:val=dv.getUint16(at,true);break;case 5122:val=dv.getInt16(at,true);break;case 5121:val=dv.getUint8(at);break;case 5120:val=dv.getInt8(at);break;}out.push(val);}return out;};}
-  const positions=[],uvs=[],materials=[],materialImages={},map=new Map();paletteByName(map,'default',DEFAULT);
-  function visit(id,parent,stack){if(stack.has(id))return;const node=json.nodes?.[id];if(!node)return;stack.add(id);const matrix=mat4Mul(parent,nodeMatrix(node));if(node.mesh!==undefined){const mesh=json.meshes?.[node.mesh];if(mesh)for(const p of mesh.primitives||[]){if((p.mode??4)!==4||p.attributes?.POSITION===undefined)continue;const getPos=access(p.attributes.POSITION),getUV=p.attributes.TEXCOORD_0!==undefined?access(p.attributes.TEXCOORD_0):null,getIdx=p.indices!==undefined?access(p.indices):null;const count=getIdx?json.accessors[p.indices].count:json.accessors[p.attributes.POSITION].count;const color=json.materials?.[p.material]?.pbrMetallicRoughness?.baseColorFactor||[1,1,1,1];const mat=paletteByName(map,'gltf-'+(p.material??0),color.slice(0,3));const texIndex=json.materials?.[p.material]?.pbrMetallicRoughness?.baseColorTexture?.index;const sourceImage=json.textures?.[texIndex]?.source;if(sourceImage!==undefined&&getUV)materialImages[mat]=sourceImage;for(let i=0;i+2<count;i+=3){for(let j=0;j<3;j++){const idx=getIdx?getIdx(i+j)[0]:i+j,q=getPos(idx);uvs.push(...(getUV?getUV(idx).slice(0,2):[0,0]));positions.push(matrix[0]*q[0]+matrix[4]*q[1]+matrix[8]*q[2]+matrix[12],matrix[1]*q[0]+matrix[5]*q[1]+matrix[9]*q[2]+matrix[13],matrix[2]*q[0]+matrix[6]*q[1]+matrix[10]*q[2]+matrix[14]);}materials.push(mat);}}}
-    for(const c of node.children||[])visit(c,matrix,stack);stack.delete(id);}
-  const roots=json.scenes?.[json.scene??0]?.nodes||json.nodes?.map((_,i)=>i)||[];for(const i of roots)visit(i,identity(),new Set());if(!positions.length)throw Error('No triangle geometry found in glTF.');
-  return{positions:new Float32Array(positions),uvs:new Float32Array(uvs),materials:new Uint16Array(materials),palette:materialPalette(map),materialImages,normalisedMetres:true};
+    return i=>{const at0=ofs+i*stride,out=[];if(at0<0||at0+nc*sz>dv.byteLength)throw Error('glTF accessor exceeds its buffer.');for(let j=0;j<nc;j++){let val,at=at0+j*sz;switch(a.componentType){case 5126:val=dv.getFloat32(at,true);break;case 5125:val=dv.getUint32(at,true);break;case 5123:val=dv.getUint16(at,true);break;case 5122:val=dv.getInt16(at,true);break;case 5121:val=dv.getUint8(at);break;case 5120:val=dv.getInt8(at);break;}
+      if(a.normalized){switch(a.componentType){case 5125:val/=4294967295;break;case 5123:val/=65535;break;case 5122:val=Math.max(-1,val/32767);break;case 5121:val/=255;break;case 5120:val=Math.max(-1,val/127);break;}}
+      out.push(val);}return out;};}
+  const positions=[],uvs=[],vertexColours=[],materials=[],materialImages={},map=new Map();let hasVertexColours=false;
+  paletteByName(map,'default',DEFAULT);
+  function visit(id,parent,stack){if(stack.has(id))return;const node=json.nodes?.[id];if(!node)return;stack.add(id);const matrix=mat4Mul(parent,nodeMatrix(node));
+    if(node.mesh!==undefined){const mesh=json.meshes?.[node.mesh];if(mesh)for(const p of mesh.primitives||[]){if((p.mode??4)!==4||p.attributes?.POSITION===undefined)continue;
+      const getPos=access(p.attributes.POSITION),getIdx=p.indices!==undefined?access(p.indices):null,getColour=p.attributes.COLOR_0!==undefined?access(p.attributes.COLOR_0):null;
+      if(getColour)hasVertexColours=true;
+      const count=getIdx?json.accessors[p.indices].count:json.accessors[p.attributes.POSITION].count;
+      const material=json.materials?.[p.material]||{},pbr=material.pbrMetallicRoughness||{},spec=material.extensions?.KHR_materials_pbrSpecularGlossiness;
+      const colour=pbr.baseColorFactor||spec?.diffuseFactor||[1,1,1,1];
+      const mat=paletteByName(map,'gltf-'+(p.material??0),colour.slice(0,3));
+      const texInfo=pbr.baseColorTexture||spec?.diffuseTexture;
+      const transform=texInfo?.extensions?.KHR_texture_transform||{};
+      const texSet=transform.texCoord??texInfo?.texCoord??0;
+      const getUV=texInfo&&p.attributes['TEXCOORD_'+texSet]!==undefined?access(p.attributes['TEXCOORD_'+texSet]):(p.attributes.TEXCOORD_0!==undefined?access(p.attributes.TEXCOORD_0):null);
+      const srcTexture=texInfo&&json.textures?.[texInfo.index],sourceImage=srcTexture?.source??srcTexture?.extensions?.EXT_texture_webp?.source??srcTexture?.extensions?.MSFT_texture_dds?.source;
+      if(sourceImage!==undefined&&getUV&&texInfo){materialImages[mat]={imageIndex:sourceImage,textureIndex:texInfo.index};}
+      const [ox,oy]=transform.offset||[0,0],[sx,sy]=transform.scale||[1,1],angle=transform.rotation||0,c=Math.cos(angle),s=Math.sin(angle);
+      for(let i=0;i+2<count;i+=3){for(let j=0;j<3;j++){
+        const idx=getIdx?getIdx(i+j)[0]:i+j,q=getPos(idx),uv=getUV?getUV(idx):[0,0];
+        let u=uv[0],v=uv[1];if(texInfo&&transform){const tu=u*sx,tv=v*sy;u=ox+c*tu-s*tv;v=oy+s*tu+c*tv;}
+        uvs.push(u,v);
+        const vc=getColour?getColour(idx):[1,1,1];vertexColours.push(vc[0]??1,vc[1]??1,vc[2]??1);
+        positions.push(matrix[0]*q[0]+matrix[4]*q[1]+matrix[8]*q[2]+matrix[12],matrix[1]*q[0]+matrix[5]*q[1]+matrix[9]*q[2]+matrix[13],matrix[2]*q[0]+matrix[6]*q[1]+matrix[10]*q[2]+matrix[14]);
+      }materials.push(mat);}
+    }}
+    for(const child of node.children||[])visit(child,matrix,stack);stack.delete(id);
+  }
+  const roots=json.scenes?.[json.scene??0]?.nodes||json.nodes?.map((_,i)=>i)||[];for(const id of roots)visit(id,identity(),new Set());if(!positions.length)throw Error('No triangle geometry found in glTF.');
+  return{positions:new Float32Array(positions),uvs:new Float32Array(uvs),vertexColours:hasVertexColours?new Float32Array(vertexColours):null,materials:new Uint16Array(materials),palette:materialPalette(map),materialImages,normalisedMetres:true};
 }
 async function loadGLTFTextures(loaded,doc,buffers,referer){loaded.textures=[];loaded.textureMaterials=[];
  const cached=new Map(),miss=[];
- for(const [matString,imageIndex] of Object.entries(loaded.materialImages||{})){
- const image=doc.images?.[imageIndex];if(!image)continue;
- let tid=cached.get(imageIndex);
- if(!tid){try{let bytes,mime=image.mimeType||'';
- if(image.uri){if(/^data:/i.test(image.uri)){bytes=await decodeDataURI(image.uri);mime=(image.uri.match(/^data:([^;,]+)/)||[])[1]||mime;}
- else{const a=findAsset(image.uri,referer);if(!a)throw Error('Missing texture '+image.uri);bytes=await assetBuffer(a);}}
- else if(image.bufferView!==undefined){const view=doc.bufferViews[image.bufferView],bin=buffers[view.buffer],start=view.byteOffset||0;bytes=bin.slice(start,start+view.byteLength);}
- else throw Error('Unresolvable embedded image');
- const tex=await decodeTexture(bytes,image.uri||('embedded-image-'+imageIndex),mime);loaded.textures.push(tex);tid=loaded.textures.length;cached.set(imageIndex,tid);
- }catch(e){miss.push(e.message);continue;}}
- loaded.textureMaterials[Number(matString)]=tid;
+ for(const [matString,texRef] of Object.entries(loaded.materialImages||{})){
+  const imageIndex=typeof texRef==='number'?texRef:texRef.imageIndex;
+  const textureIndex=typeof texRef==='number'?undefined:texRef.textureIndex;
+  const image=doc.images?.[imageIndex];if(!image)continue;
+  const sampler=doc.samplers?.[doc.textures?.[textureIndex]?.sampler]||{};
+  const key=imageIndex+':'+(doc.textures?.[textureIndex]?.sampler??-1);
+  let tid=cached.get(key);
+  if(!tid){try{let bytes,mime=image.mimeType||'';
+    if(image.uri){if(/^data:/i.test(image.uri)){bytes=await decodeDataURI(image.uri);mime=(image.uri.match(/^data:([^;,]+)/)||[])[1]||mime;}
+      else{const a=findAsset(image.uri,referer);if(!a)throw Error('Missing texture '+image.uri);bytes=await assetBuffer(a);}}
+    else if(image.bufferView!==undefined){const view=doc.bufferViews[image.bufferView],bin=buffers[view.buffer],start=view.byteOffset||0;bytes=bin.slice(start,start+view.byteLength);}
+    else throw Error('Unresolvable embedded image');
+    const tex=await decodeTexture(bytes,image.uri||('embedded-image-'+imageIndex),mime);
+    tex.wrapS=sampler.wrapS??10497;tex.wrapT=sampler.wrapT??10497;
+    loaded.textures.push(tex);tid=loaded.textures.length;cached.set(key,tid);
+   }catch(e){miss.push(e.message);continue;}}
+  loaded.textureMaterials[Number(matString)]=tid;
  }
  if(miss.length)loaded.notice='Could not load some textures: '+miss.slice(0,2).join('; ');
  return loaded;
@@ -574,9 +618,9 @@ function voxelise(){if(!source||busy)return;try{const cfg=computeGrid();if(cfg.t
  if(cfg.total>35000000&&!confirm('This grid uses '+fmt(cfg.total)+' positions and can require substantial browser memory. Continue?'))return;
  modelScale=getMultiplier();if(sourceGeometry){modelGL=destroyMesh(modelGL);sourceGeometry=makeSourceGeometry();modelGL=uploadSourceMeshes(sourceGeometry);}
  const w=startWorker();if(!w)throw Error('Your browser could not start the background processor.');const scaled=new Float32Array(source.positions.length);for(let i=0;i<scaled.length;i++)scaled[i]=source.positions[i]*modelScale;
- const mats=source.materials.slice(),uvs=source.uvs?.slice()||null;gridStats=null;voxelGL=destroyMesh(voxelGL);lastMeshMode='all';$('exportJSON').disabled=true;$('exportOBJ').disabled=true;
+ const mats=source.materials.slice(),uvs=source.uvs?.slice()||null,vertexColours=source.vertexColours?.slice()||null;gridStats=null;voxelGL=destroyMesh(voxelGL);lastMeshMode='all';$('exportJSON').disabled=true;$('exportOBJ').disabled=true;
  loading(true);progress('Preparing model',2);warn('');
- w.postMessage({type:'generate',positions:scaled.buffer,materials:mats.buffer,uvs:uvs?.buffer||null,textureMaterials:source.textureMaterials||[],textures:source.textures||[],palette:source.palette,W:cfg.W,H:cfg.H,D:cfg.D,cell:cfg.cell,origin:cfg.origin,bounds:cfg.b,mode:fillMode,thickness:readNum('thickness',3),maxCells:cfg.limit},[scaled.buffer,mats.buffer,...(uvs?[uvs.buffer]:[])]);}
+ w.postMessage({type:'generate',positions:scaled.buffer,materials:mats.buffer,uvs:uvs?.buffer||null,vertexColours:vertexColours?.buffer||null,textureMaterials:source.textureMaterials||[],textures:source.textures||[],palette:source.palette,W:cfg.W,H:cfg.H,D:cfg.D,cell:cfg.cell,origin:cfg.origin,bounds:cfg.b,mode:fillMode,thickness:readNum('thickness',3),maxCells:cfg.limit},[scaled.buffer,mats.buffer,...(uvs?[uvs.buffer]:[]),...(vertexColours?[vertexColours.buffer]:[])]);}
  catch(e){loading(false);setStatus(e.message,'error');warn('The full grid includes empty air as well as occupied blocks. Try Longest side = 48 or 64 first.');}}
 function requestMesh(){if(!worker||!gridStats||busy)return;const mode=$('sliceMode').value,layer=readNum('slice',0);lastMeshMode=mode;
  setStatus('Updating voxel preview…');worker.postMessage({type:'mesh',mode,layer});}
