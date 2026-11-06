@@ -54,3 +54,12 @@ This is still a lightweight preview renderer; advanced PBR, environment lighting
 - Decode glTF and legacy specular/glossiness material colour factors from **linear** RGB into display/sRGB values before combining them with textures. This addresses near-black roof materials in Casa Di Abitazione, and improves other dark untextured surfaces such as planting-soil strips in Gabled House. The same palette adjustment applies to voxel JSON exports. OBJ colour values are unchanged.
 - Improve perspective depth-buffer accuracy by using a dynamically sized near clipping plane instead of 0.005 metres; this helps reduce mobile Z-fighting where model surfaces nearly overlap. Some genuinely coplanar triangles exist in the source model and can still flicker.
 - Re-tested the supplied Casa Di Abitazione and Gabled House ZIPs for import and material preservation. The exact iPhone visual output still needs verification.
+
+## V8 — glass and transparent-surface preview
+
+- Draw opaque source geometry first, then transparent material groups in a separate blended pass without writing to the depth buffer. The small transparent triangle groups are sorted back-to-front for the current camera view.
+- Add a **Transparent glass strength** slider in the Original and Overlay preview modes. The slider is deliberately **preview-only**: it does not alter voxel occupancy, materials, or the JSON/OBJ exports.
+- For GLB scenes with unusually dark, relatively opaque glazing (including Casa Di Abitazione, whose glass is approximately 69% opaque), the initial strength is 55% of the material's original opacity. Other models, including Gabled House, start at 100% to preserve their existing appearance. A user can manually set the full original opacity or hide transparent surfaces at 0%.
+- Both supplied house ZIPs passed browser import and preview-control checks with no JavaScript errors. Automated test browser has no WebGL context, so glass composition must still be verified on a WebGL-capable browser such as iPhone Safari.
+
+**Note:** Better preview transparency is independent of voxel colour assignment. The current grid still selects the first triangle intersecting an unoccupied cell, which can miscolour overlapping roof surfaces; fixing this requires a separate voxelisation update.
