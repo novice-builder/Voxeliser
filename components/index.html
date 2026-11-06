@@ -886,6 +886,61 @@ $('componentExport').onclick=()=>{
 $('componentImport').onclick=()=>$('componentImportFile').click();
 $('componentImportFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(data.schema!=='voxel-lab-components-v1'||data.model?.triangles!==source?.materials?.length||data.model?.filename!==currentName)throw Error('Grouping file does not match current model filename and triangle count.');componentRemember();componentApply(data);componentStore();componentMsg('Restored component assignments.');}catch(err){componentMsg('Import failed: '+err.message);}};
 
+
+/* Tap-pick the nearest visible textured triangle without modifying its geometry. */
+const componentPress=new Map();
+function componentPick(x,y){
+ if(!source?.positions||!componentParts.length)return null;
+ const rect=canvas.getBoundingClientRect(),aspect=rect.width/Math.max(rect.height,1);
+ const sx=(2*(x-rect.left)/rect.width-1)*Math.tan(Math.PI/8)*aspect;
+ const sy=(1-2*(y-rect.top)/rect.height)*Math.tan(Math.PI/8);
+ const cp=Math.cos(camera.pitch),sp=Math.sin(camera.pitch),sn=Math.sin(camera.yaw),cs=Math.cos(camera.yaw);
+ const target=camera.target.map((v,k)=>v+camera.pan[k]);
+ const ex=target[0]+camera.distance*cp*sn,ey=target[1]+camera.distance*sp,ez=target[2]+camera.distance*cp*cs;
+ let dx=-cp*sn+cs*sx-sn*sp*sy,dy=-sp+cp*sy,dz=-cp*cs-sn*sx-cs*sp*sy;
+ const dd=Math.hypot(dx,dy,dz);dx/=dd;dy/=dd;dz/=dd;
+ const bound=source.rawBounds,sc=modelScale,ox=(bound.min[0]+bound.max[0])/2,oy=bound.min[1],oz=(bound.min[2]+bound.max[2])/2,pos=source.positions;
+ let closest=Infinity,chosen=null;
+ for(const part of componentParts){
+  if(!componentVisible(part.id))continue;
+  let lo=0,hi=Infinity,pass=true;
+  for(let k=0;k<3;k++){
+   const offset=k===0?ox:k===1?oy:oz;
+   const a=(part.min[k]-offset)*sc,b=(part.max[k]-offset)*sc,eye=k===0?ex:k===1?ey:ez,ray=k===0?dx:k===1?dy:dz;
+   if(Math.abs(ray)<1e-10){if(eye<a-.001||eye>b+.001){pass=false;break;}}
+   else{const u=(a-eye)/ray,v=(b-eye)/ray;lo=Math.max(lo,Math.min(u,v));hi=Math.min(hi,Math.max(u,v));if(lo>hi){pass=false;break;}}
+  }
+  if(!pass||lo>closest)continue;
+  for(const tri of part.indices){
+   const o=tri*9,x0=(pos[o]-ox)*sc,y0=(pos[o+1]-oy)*sc,z0=(pos[o+2]-oz)*sc;
+   const ax=(pos[o+3]-pos[o])*sc,ay=(pos[o+4]-pos[o+1])*sc,az=(pos[o+5]-pos[o+2])*sc;
+   const bx=(pos[o+6]-pos[o])*sc,by=(pos[o+7]-pos[o+1])*sc,bz=(pos[o+8]-pos[o+2])*sc;
+   const px=dy*bz-dz*by,py=dz*bx-dx*bz,pz=dx*by-dy*bx,det=ax*px+ay*py+az*pz;
+   if(Math.abs(det)<1e-10)continue;
+   const inv=1/det,tx=ex-x0,ty=ey-y0,tz=ez-z0,u=(tx*px+ty*py+tz*pz)*inv;
+   if(u<0||u>1)continue;
+   const qx=ty*az-tz*ay,qy=tz*ax-tx*az,qz=tx*ay-ty*ax,v=(dx*qx+dy*qy+dz*qz)*inv;
+   if(v<0||u+v>1)continue;
+   const hit=(bx*qx+by*qy+bz*qz)*inv;
+   if(hit>.0001&&hit<closest){closest=hit;chosen=part;}
+  }
+ }
+ return chosen;
+}
+canvas.addEventListener('pointerdown',e=>componentPress.set(e.pointerId,[e.clientX,e.clientY]));
+canvas.addEventListener('pointercancel',e=>componentPress.delete(e.pointerId));
+canvas.addEventListener('pointerup',e=>{
+ const down=componentPress.get(e.pointerId),multi=componentPress.size>1;componentPress.delete(e.pointerId);
+ if(!down||multi||Math.hypot(e.clientX-down[0],e.clientY-down[1])>8)return;
+ const x=e.clientX,y=e.clientY;componentMsg('Identifying the selected surface…');
+ setTimeout(()=>{
+  const part=componentPick(x,y);
+  if(!part){componentMsg('No component at that point. Try the list to select smaller pieces.');return;}
+  if(!$('componentMulti').checked)componentSelected.clear();
+  componentSelected.add(part.id);componentDraw();componentMsg('Selected '+part.name+' ('+part.triangles.toLocaleString('en-AU')+' triangles).');
+ },0);
+});
+
 // UI wiring
 $('fileInput').addEventListener('change',e=>{importFilesV2(e.target.files);e.target.value='';});$('folderInput').addEventListener('change',e=>{importFilesV2(e.target.files);e.target.value='';});$('folderLoad').onclick=()=>$('folderInput').click();$('modelPicker').addEventListener('change',async e=>{if(busy)return;try{loading(true);await loadPackageModel(packageModels[Number(e.target.value)]);setStatus('Selected '+currentName+' · ready to voxelise.','success');}catch(err){setStatus(err.message,'error');}finally{loading(false);}});$('topLoad').onclick=()=>$('fileInput').click();
 $('loadDemo').onclick=()=>pickDemo($('demoSelect').value);$('demoHouseTop').onclick=()=>{$('demoSelect').value='house';pickDemo('house');};
