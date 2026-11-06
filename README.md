@@ -39,3 +39,11 @@ Tested the actual `casa_di_abitazione.glb` and `gabled_house_with_timber_terrace
 ## Troubleshooting missing colours
 
 If a GLB appears entirely white in **Original**, the problem is likely in model import, shader rendering, or browser memory/texture upload rather than voxel-grid conversion. If the original displays incorrect texture placement, check glTF UV sets and material extensions. These vary between files, and the formats supported above are not a guarantee for every model. For an exact diagnosis, provide the original GLB or a ZIP with its dependencies.
+
+## V6 — corrected glTF texture orientation
+
+- Corrected glTF/GLB vertical UV origin conversion before rendering and voxel colour sampling. GLB/glTF texture coordinates have an upper-left image origin, whereas the internally shared OBJ-style texture sampler expects a lower-left image origin.
+- This addresses black/incorrect image-atlas regions appearing on imported house roofs, walls, timber and ground. OBJ texture imports retain their existing orientation.
+- Verified using the supplied Gabled House and Casa Di Abitazione ZIP imports. A geometric-area-weighted check of the Gabled House roof changes the incorrectly sampled black/dark area from approximately 42% to 0% of sampled triangles; the ground mapping changes from approximately 99% dark to 25% dark, with the remainder sampling the expected grassy colours.
+
+This is still a lightweight preview renderer; advanced PBR, environment lighting, normal maps and screen-space reflections are not reproduced.
