@@ -63,3 +63,13 @@ This is still a lightweight preview renderer; advanced PBR, environment lighting
 - Both supplied house ZIPs passed browser import and preview-control checks with no JavaScript errors. Automated test browser has no WebGL context, so glass composition must still be verified on a WebGL-capable browser such as iPhone Safari.
 
 **Note:** Better preview transparency is independent of voxel colour assignment. The current grid still selects the first triangle intersecting an unoccupied cell, which can miscolour overlapping roof surfaces; fixing this requires a separate voxelisation update.
+
+
+## V9 — brighter studio lighting
+
+- **Preview lighting**: Studio (new brighter default), Classic (approximately the prior V8 look), or Unlit (flat texture colours).
+- **Preview brightness** slider: 60–200%, default 120% in Studio.
+- **Ambient light** slider: 0–120%, default 90% in Studio. Studio retains a gentle directional light, reducing harsh darkening of walls and roof shadows.
+- Preview lighting applies to Original, Voxels and Overlay rendering only. **It does not modify source textures, occupied grid data, the voxel-colour palette or exports.**
+- Both supplied house ZIPs loaded successfully in automated browser tests, and the new controls changed settings without JavaScript errors. The headless test browser used software preview rather than WebGL, so the final visual result should be checked on Safari/iPhone.
+- Sketchfab's image-based lighting, reflections, ambient occlusion and tone mapping are not replicated by this simplified viewer; brightness controls improve the comparison but cannot guarantee an exact match.
