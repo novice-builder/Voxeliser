@@ -723,9 +723,9 @@ function applyUnitScale(){if(!source)return;try{modelScale=getMultiplier();model
 // Minimal WebGL viewer: independent of any online library/CDN.
 let prog=null,loc={},camera={yaw:.65,pitch:.42,distance:8,target:[0,1,0],pan:[0,0,0]},cameraInit=null,drawQueued=false,showGrid=true;
 const vertexShader=`precision highp float;attribute vec3 aPos;attribute vec3 aNormal;attribute vec3 aColor;attribute vec2 aUV;uniform mat4 uProj,uView;varying vec3 vColor,vNormal;varying highp vec2 vUV;void main(){vColor=aColor;vNormal=aNormal;vUV=aUV;gl_Position=uProj*uView*vec4(aPos,1.0);}`;
-const fragmentShader=`precision highp float;varying vec3 vColor,vNormal;varying highp vec2 vUV;uniform float uOpacity;uniform float uLight;uniform float uTextured;uniform float uAmbient;uniform float uSunStrength;uniform float uExposure;uniform sampler2D uSampler;void main(){float ndl=max(dot(normalize(vNormal),normalize(vec3(0.48,0.84,0.49))),0.0);float shade=mix(1.0,uAmbient+uSunStrength*ndl,uLight);vec4 tex=uTextured>0.5?texture2D(uSampler,vec2(vUV.x,1.0-vUV.y)):vec4(1.0);if(tex.a<0.08)discard;vec3 rgb=clamp(vColor*tex.rgb*shade*uExposure,0.0,1.0);gl_FragColor=vec4(rgb,uOpacity*tex.a);}`;
+const fragmentShader=`precision highp float;varying vec3 vColor,vNormal;varying highp vec2 vUV;uniform float uOpacity;uniform float uLight;uniform float uSelectTint;uniform float uTextured;uniform float uAmbient;uniform float uSunStrength;uniform float uExposure;uniform sampler2D uSampler;void main(){float ndl=max(dot(normalize(vNormal),normalize(vec3(0.48,0.84,0.49))),0.0);float shade=mix(1.0,uAmbient+uSunStrength*ndl,uLight);vec4 tex=uTextured>0.5?texture2D(uSampler,vec2(vUV.x,1.0-vUV.y)):vec4(1.0);if(tex.a<0.08)discard;vec3 rgb=clamp(vColor*tex.rgb*shade*uExposure,0.0,1.0);rgb=mix(rgb,vec3(.30,.95,.79),uSelectTint*.46);gl_FragColor=vec4(rgb,uOpacity*tex.a);}`;
 function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
-function initialiseGL(){if(!gl)return;prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vertexShader));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fragmentShader));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);for(const v of ['aPos','aNormal','aColor','aUV'])loc[v]=gl.getAttribLocation(prog,v);for(const v of ['uProj','uView','uOpacity','uLight','uTextured','uSampler','uAmbient','uSunStrength','uExposure'])loc[v]=gl.getUniformLocation(prog,v);gl.clearColor(.045,.075,.103,1);gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);}
+function initialiseGL(){if(!gl)return;prog=gl.createProgram();gl.attachShader(prog,shader(gl.VERTEX_SHADER,vertexShader));gl.attachShader(prog,shader(gl.FRAGMENT_SHADER,fragmentShader));gl.linkProgram(prog);if(!gl.getProgramParameter(prog,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(prog));gl.useProgram(prog);for(const v of ['aPos','aNormal','aColor','aUV'])loc[v]=gl.getAttribLocation(prog,v);for(const v of ['uProj','uView','uOpacity','uLight','uTextured','uSampler','uAmbient','uSunStrength','uExposure','uSelectTint'])loc[v]=gl.getUniformLocation(prog,v);gl.clearColor(.045,.075,.103,1);gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);}
 function uploadMesh(vertices,indices,stride=9,texId=0){if(!vertices)return null;if(!gl)return{vertices,indices,count:indices?indices.length:vertices.length/stride,hasIndex:!!indices,stride,texId};const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,vertices,gl.STATIC_DRAW);const result={buffer:b,index:null,count:indices?indices.length:vertices.length/stride,hasIndex:!!indices,stride,texId};
  if(indices){result.index=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,result.index);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.STATIC_DRAW);}return result;}
 function destroyMesh(mesh){if(mesh?.groups){for(const group of mesh.groups)destroyMesh(group);return null;}if(mesh&&gl){gl.deleteBuffer(mesh.buffer);if(mesh.index)gl.deleteBuffer(mesh.index);}return null;}
@@ -737,6 +737,7 @@ function syncLighting(){const preset=$('lightingPreset').value;if(preset==='clas
 function updateLightingLabels(){$('brightnessOut').textContent=$('brightness').value+'%';$('ambientOut').textContent=$('ambientLight').value+'%';}
 function drawMesh(mesh,proj,view,opacity,light){if(!mesh)return;if(mesh.groups){for(const group of mesh.groups)drawMesh(group,proj,view,opacity,light);return;}
  opacity*=mesh.alpha??1;
+ if(loc.uSelectTint)gl.uniform1f(loc.uSelectTint,componentTint&&componentSelected.has(mesh.partId)?1:0);
  gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);const stride=mesh.stride*4;
  gl.vertexAttribPointer(loc.aPos,3,gl.FLOAT,false,stride,0);gl.vertexAttribPointer(loc.aNormal,3,gl.FLOAT,false,stride,12);gl.vertexAttribPointer(loc.aColor,3,gl.FLOAT,false,stride,24);
  if(mesh.stride===11){gl.enableVertexAttribArray(loc.aUV);gl.vertexAttribPointer(loc.aUV,2,gl.FLOAT,false,stride,36);}else{gl.disableVertexAttribArray(loc.aUV);gl.vertexAttrib2f(loc.aUV,0,0);}
@@ -794,7 +795,97 @@ for(const type of ['pointerup','pointercancel'])canvas.addEventListener(type,e=>
 canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('dblclick',resetCamera);
 canvas.addEventListener('wheel',e=>{e.preventDefault();camera.distance=clamp(camera.distance*Math.exp(e.deltaY*.0013),.02,1e9);},{passive:false});
 function runLoop(){render();requestAnimationFrame(runLoop);}
-// COMPONENT CODE INSERTION POINT
+
+/* Material-level component grouping · original geometry and source UV data are immutable. */
+const COMPONENT_CATEGORIES=['Roof','Walls','Windows & Glass','Doors','Floors','Ground & Landscaping','Other'];
+let componentParts=[],componentGroups=new Map(),componentSelected=new Set(),componentTint=true,componentUndo=[],componentLookup=new Map();
+const componentMsg=msg=>$('componentStatus').textContent=msg;
+const componentEl=(tag,label,cls)=>{const el=document.createElement(tag);if(label!==undefined)el.textContent=label;if(cls)el.className=cls;return el;};
+const componentStorageKey=()=> 'voxel-lab-components-v1:'+currentName+':'+(source?.materials?.length||0);
+const componentSnapshot=()=>({groups:[...componentGroups],parts:componentParts.map(p=>[p.id,p.group])});
+function componentRemember(){componentUndo.push(JSON.stringify(componentSnapshot()));if(componentUndo.length>25)componentUndo.shift();}
+function componentStore(){try{localStorage.setItem(componentStorageKey(),JSON.stringify(componentSnapshot()));}catch(e){}}
+function componentApply(data){if(!Array.isArray(data.groups)||!Array.isArray(data.parts))throw Error('Invalid groups file.');
+ const groups=new Map(data.groups.filter(e=>Array.isArray(e)&&typeof e[0]==='string'&&e[0].length<90).map(e=>[e[0],{visible:e[1]?.visible!==false,closed:!!e[1]?.closed}]));
+ if(!groups.size)throw Error('No valid groups found.');
+ componentGroups=groups;const byId=new Map(data.parts.map(([i,g])=>[Number(i),g]));
+ for(const part of componentParts){const g=byId.get(part.id);if(typeof g==='string'&&groups.has(g))part.group=g;}
+ componentDraw();
+}
+function componentCategory(p){
+ const name=p.name.toLowerCase(),height=source.rawBounds.size[1]||1,y=((p.min[1]+p.max[1])/2-source.rawBounds.min[1])/height;
+ if(/glass|window|glaz|pane|fenetre|fenêtre/.test(name)||p.alpha<.95)return 'Windows & Glass';
+ if(/roof|tile|shingle|ridge|slate|gable|tetto|tegola|copert/.test(name))return 'Roof';
+ if(/door|gate|porta|entry/.test(name))return 'Doors';
+ if(/floor|slab|ceiling|deck|terrace|porch|pavimento/.test(name))return 'Floors';
+ if(/grass|soil|terrain|garden|landscape|ground|earth|lawn|prato/.test(name))return 'Ground & Landscaping';
+ if(/wall|brick|plaster|muro|facade|stucco|siding/.test(name))return 'Walls';
+ const flat=p.totalNormal?p.upNormal/p.totalNormal:0;
+ if(y>.65&&flat>.24)return 'Roof';
+ if(y<.17&&flat>.60)return 'Ground & Landscaping';
+ if(y>.18&&y<.85&&flat<.36)return 'Walls';
+ return 'Other';
+}
+function componentsPrepare(){
+ componentParts=[];componentLookup.clear();componentSelected.clear();componentUndo=[];
+ componentGroups=new Map(COMPONENT_CATEGORIES.map(n=>[n,{visible:true,closed:false}]));
+ if(!source?.positions?.length)return;
+ const entries=new Map(),pos=source.positions;
+ for(let i=0;i<source.materials.length;i++){
+  const id=Number(source.materials[i]),o=i*9;
+  let p=entries.get(id);if(!p){p={id,name:source.materialNames?.[id]||'Material '+id,triangles:0,indices:[],min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity],upNormal:0,totalNormal:0,alpha:source.materialOpacities?.[id]??1};entries.set(id,p);}
+  p.indices.push(i);p.triangles++;
+  for(let j=0;j<9;j+=3)for(let k=0;k<3;k++){const v=pos[o+j+k];if(v<p.min[k])p.min[k]=v;if(v>p.max[k])p.max[k]=v;}
+  const ax=pos[o+3]-pos[o],ay=pos[o+4]-pos[o+1],az=pos[o+5]-pos[o+2],bx=pos[o+6]-pos[o],by=pos[o+7]-pos[o+1],bz=pos[o+8]-pos[o+2];
+  const nx=ay*bz-az*by,ny=az*bx-ax*bz,nz=ax*by-ay*bx;p.upNormal+=Math.abs(ny);p.totalNormal+=Math.hypot(nx,ny,nz);
+ }
+ componentParts=[...entries.values()].sort((a,b)=>b.triangles-a.triangles);
+ for(const part of componentParts){part.group=componentCategory(part);componentLookup.set(part.id,part);}
+ try{const old=localStorage.getItem(componentStorageKey());if(old)componentApply(JSON.parse(old));}catch(e){}
+ componentDraw();componentMsg(componentParts.length+' material components detected. Correct the suggested groups before exporting.');
+}
+function componentVisible(id){const part=componentLookup.get(id);return !part||componentGroups.get(part.group)?.visible!==false;}
+function componentDraw(){
+ const list=$('componentList');if(!list)return;list.replaceChildren();
+ const term=$('componentSearch').value.trim().toLowerCase();
+ $('componentSummary').textContent=componentParts.length+' components · '+(source?.materials?.length||0).toLocaleString('en-AU')+' triangles · '+componentSelected.size+' selected';
+ $('componentSelection').textContent=componentSelected.size?('Selected: '+componentParts.filter(p=>componentSelected.has(p.id)).slice(0,3).map(p=>p.name).join(', ')+(componentSelected.size>3?'…':'')):'Select a component from the list or by tapping the model.';
+ $('componentMove').disabled=!componentSelected.size;$('componentIsolate').disabled=!componentSelected.size;$('componentUndo').disabled=!componentUndo.length;
+ const target=$('componentTarget'),old=target.value;target.replaceChildren();for(const [name] of componentGroups){const option=componentEl('option',name);option.value=name;target.append(option);}if(componentGroups.has(old))target.value=old;
+ for(const [name,g] of componentGroups){
+  const parts=componentParts.filter(p=>p.group===name&&(!term||name.toLowerCase().includes(term)||p.name.toLowerCase().includes(term)));
+  if(term&&!parts.length)continue;
+  const box=componentEl('div',undefined,'component-group'),head=componentEl('div',undefined,'component-head');
+  const title=componentEl('button',(g.closed?'▸ ':'▾ ')+name+' ('+parts.length+')','btn tiny grow');title.onclick=()=>{g.closed=!g.closed;componentDraw();};head.append(title);
+  const eye=componentEl('button',g.visible?'Hide':'Show','btn tiny');eye.title='Show or hide this group';eye.onclick=()=>componentChange(()=>{g.visible=!g.visible;},name+' '+(g.visible?'visible':'hidden'));head.append(eye);
+  const solo=componentEl('button','Solo','btn tiny');solo.onclick=()=>componentChange(()=>{for(const [key,value] of componentGroups)value.visible=(key===name);},'Only '+name+' visible.');head.append(solo);
+  const rename=componentEl('button','⋯','btn tiny');rename.title='Rename group';rename.onclick=()=>{const to=prompt('Rename group',name)?.trim();if(!to||to===name)return;if(to.length>75||componentGroups.has(to)){componentMsg('Use a unique group name under 76 characters.');return;}componentChange(()=>{componentGroups=new Map([...componentGroups].map(([k,v])=>[k===name?to:k,v]));for(const p of componentParts)if(p.group===name)p.group=to;},'Renamed '+name+' to '+to);};head.append(rename);box.append(head);
+  if(!g.closed){const items=componentEl('div',undefined,'component-items');if(!parts.length)items.append(componentEl('div','No components','component-info'));for(const p of parts){
+   const row=componentEl('button',undefined,'component-part'+(componentSelected.has(p.id)?' selected':''));row.type='button';row.setAttribute('aria-pressed',String(componentSelected.has(p.id)));
+   row.append(componentEl('span',p.name),componentEl('small',p.triangles.toLocaleString('en-AU')+' △'));
+   row.onclick=()=>{if(!$('componentMulti').checked)componentSelected.clear();if(componentSelected.has(p.id))componentSelected.delete(p.id);else componentSelected.add(p.id);componentDraw();};items.append(row);
+  }box.append(items);}
+  list.append(box);
+ }
+}
+function componentChange(action,msg){componentRemember();action();componentStore();componentDraw();componentMsg(msg);}
+$('componentHighlight').onchange=e=>{componentTint=e.target.checked;};
+$('componentSearch').oninput=componentDraw;
+$('componentNew').onclick=()=>{const name=prompt('New component group')?.trim();if(!name)return;if(name.length>75||componentGroups.has(name)){componentMsg('Use a unique group name under 76 characters.');return;}componentChange(()=>componentGroups.set(name,{visible:true,closed:false}),'Created '+name+'.');};
+$('componentShowAll').onclick=()=>componentChange(()=>{for(const g of componentGroups.values())g.visible=true;},'Showing all components.');
+$('componentClear').onclick=()=>{componentSelected.clear();componentDraw();};
+$('componentMove').onclick=()=>{const to=$('componentTarget').value;if(!componentSelected.size||!componentGroups.has(to))return;componentChange(()=>{for(const p of componentParts)if(componentSelected.has(p.id))p.group=to;},'Moved '+componentSelected.size+' components to '+to+'.');};
+$('componentIsolate').onclick=()=>{const names=new Set(componentParts.filter(p=>componentSelected.has(p.id)).map(p=>p.group));if(!names.size)return;componentChange(()=>{for(const [n,g] of componentGroups)g.visible=names.has(n);},'Showing selected component groups.');};
+$('componentUndo').onclick=()=>{const old=componentUndo.pop();if(old){componentApply(JSON.parse(old));componentStore();componentMsg('Undid last edit.');}};
+$('componentReset').onclick=()=>{if(!componentParts.length)return;componentChange(()=>{for(const p of componentParts)p.group=componentCategory(p);for(const g of componentGroups.values())g.visible=true;},'Restored automatic grouping suggestions.');};
+$('componentExport').onclick=()=>{
+ if(!componentParts.length){componentMsg('Import a model first.');return;}
+ const data={schema:'voxel-lab-components-v1',model:{filename:currentName,triangles:source.materials.length},...componentSnapshot()};
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=currentName.replace(/\.[^.]+$/,'').replace(/[^a-zA-Z0-9 _-]/g,'_')+' - Components.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);componentMsg('Exported grouping JSON. Original model not modified.');
+};
+$('componentImport').onclick=()=>$('componentImportFile').click();
+$('componentImportFile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const data=JSON.parse(await f.text());if(data.schema!=='voxel-lab-components-v1'||data.model?.triangles!==source?.materials?.length||data.model?.filename!==currentName)throw Error('Grouping file does not match current model filename and triangle count.');componentRemember();componentApply(data);componentStore();componentMsg('Restored component assignments.');}catch(err){componentMsg('Import failed: '+err.message);}};
+
 // UI wiring
 $('fileInput').addEventListener('change',e=>{importFilesV2(e.target.files);e.target.value='';});$('folderInput').addEventListener('change',e=>{importFilesV2(e.target.files);e.target.value='';});$('folderLoad').onclick=()=>$('folderInput').click();$('modelPicker').addEventListener('change',async e=>{if(busy)return;try{loading(true);await loadPackageModel(packageModels[Number(e.target.value)]);setStatus('Selected '+currentName+' · ready to voxelise.','success');}catch(err){setStatus(err.message,'error');}finally{loading(false);}});$('topLoad').onclick=()=>$('fileInput').click();
 $('loadDemo').onclick=()=>pickDemo($('demoSelect').value);$('demoHouseTop').onclick=()=>{$('demoSelect').value='house';pickDemo('house');};
