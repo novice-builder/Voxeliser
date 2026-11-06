@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="app">
-<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">V6</span></strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
+<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">V7</span></strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
 <div class="work">
 <aside class="sidebar">
 <section class="panel full"><h2 class="paneltitle">1 · Source model</h2><label class="upload" for="fileInput"><b>↑ Import model or ZIP package</b><small>OBJ · GLB · glTF · STL · PLY · OFF · DAE · 3DS · 3MF · ZIP (including nested ZIPs)</small></label><input id="fileInput" type="file" multiple accept=".obj,.stl,.glb,.gltf,.mtl,.bin,.ply,.off,.dae,.3ds,.3mf,.zip,.jpg,.jpeg,.png,.webp,.fbx,.usdz,.blend,.max" hidden><div class="row" style="margin-top:8px"><button class="btn tiny grow" id="folderLoad" type="button">Import whole folder</button><input id="folderInput" type="file" multiple webkitdirectory directory hidden><span class="hint grow" style="margin:0">Keeps MTL, textures and glTF assets together</span></div><div id="modelPickerRow" class="field hidden" style="margin-top:12px"><label class="numlabel" for="modelPicker">Model in package</label><select id="modelPicker"></select></div><p class="filemeta" id="packageInfo" style="margin:9px 0 0"></p><p class="filemeta" id="sourceInfo" style="margin:10px 0">Sample: Torus · ready to voxelise</p><div class="row"><span class="subhead" style="margin:0">Samples</span><select id="demoSelect" class="grow" aria-label="Sample model"><option value="torus">Torus / doughnut</option><option value="house">Simple house</option><option value="sphere">Sphere</option></select><button class="btn tiny" id="loadDemo">Load</button></div><hr class="divider"><div class="two"><div><label class="numlabel" for="unit">Input units</label><select id="unit"><option value="1">Metres</option><option value="0.01">Centimetres</option><option value="0.001">Millimetres</option><option value="0.0254">Inches</option><option value="0.3048">Feet</option></select></div><div><label class="numlabel" for="scale">Additional scale</label><input id="scale" type="number" min="0.00001" max="100000" step="any" value="1"></div></div><p class="hint">OBJ and STL don't reliably store real-world units. Set these before using a precise cell size.</p></section>
@@ -475,7 +475,11 @@ function parseGLTFScene(doc,buffers){const json=doc;
       const count=getIdx?json.accessors[p.indices].count:json.accessors[p.attributes.POSITION].count;
       const material=json.materials?.[p.material]||{},pbr=material.pbrMetallicRoughness||{},spec=material.extensions?.KHR_materials_pbrSpecularGlossiness;
       const colour=pbr.baseColorFactor||spec?.diffuseFactor||[1,1,1,1];
-      const mat=paletteByName(map,'gltf-'+(p.material??0),colour.slice(0,3));
+      // glTF colour factors (including legacy spec/gloss diffuseFactor) are LINEAR.
+      // Our WebGL preview and voxel palette operate in display/sRGB space. Without
+      // conversion, a linear factor of 0.032 renders near-black rather than dark grey.
+      const linearToSRGB=value=>{const v=Math.max(0,Math.min(1,value));return v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;};
+      const mat=paletteByName(map,'gltf-'+(p.material??0),colour.slice(0,3).map(linearToSRGB));
       // glTF BLEND materials (including transparent glazing) require per-material opacity.
       // Keep OPAQUE materials fully opaque even if baseColorFactor's alpha is less than 1.
       materialOpacities[mat]=material.alphaMode==='BLEND'?Math.max(0.02,Math.min(1,colour[3]??1)):1;
@@ -493,7 +497,7 @@ function parseGLTFScene(doc,buffers){const json=doc;
         // sampler uses OBJ-style lower-left UVs and flips V at sampling time.
         // Convert only glTF coordinates here, preserving OBJ/DAE behaviour.
         uvs.push(u,1-v);
-        const vc=getColour?getColour(idx):[1,1,1];vertexColours.push(vc[0]??1,vc[1]??1,vc[2]??1);
+        const vc=getColour?getColour(idx):[1,1,1];vertexColours.push(linearToSRGB(vc[0]??1),linearToSRGB(vc[1]??1),linearToSRGB(vc[2]??1));
         positions.push(matrix[0]*q[0]+matrix[4]*q[1]+matrix[8]*q[2]+matrix[12],matrix[1]*q[0]+matrix[5]*q[1]+matrix[9]*q[2]+matrix[13],matrix[2]*q[0]+matrix[6]*q[1]+matrix[10]*q[2]+matrix[14]);
       }materials.push(mat);}
     }}
@@ -674,7 +678,10 @@ let gridBuffer=null,gridVertexCount=0;
 function drawGround(proj,view){if(!gridBuffer)return;gl.disable(gl.BLEND);gl.bindBuffer(gl.ARRAY_BUFFER,gridBuffer);for(let i=0;i<3;i++){const l=[loc.aPos,loc.aNormal,loc.aColor][i];gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,3,gl.FLOAT,false,36,i*12);}gl.uniformMatrix4fv(loc.uProj,false,proj);gl.uniformMatrix4fv(loc.uView,false,view);gl.uniform1f(loc.uOpacity,1);gl.uniform1f(loc.uLight,0);gl.uniform1f(loc.uTextured,0);gl.disableVertexAttribArray(loc.aUV);gl.vertexAttrib2f(loc.aUV,0,0);gl.drawArrays(gl.LINES,0,gridVertexCount);}
 function render(){if(software){renderSoftware();return;}if(!gl||!prog)return;const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight),dpr=Math.min(devicePixelRatio||1,2);if(canvas.width!==Math.round(w*dpr)||canvas.height!==Math.round(h*dpr)){canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);gl.viewport(0,0,canvas.width,canvas.height);}gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
  const maxSize=source?Math.max(...source.rawBounds.size)*modelScale:4;
- const far=Math.max(500,maxSize*20+camera.distance*4),proj=mat4Perspective(Math.PI/4,w/h,.005,far);
+ // A 5 mm near plane with a 500+ m far plane exhausted depth-buffer precision
+ // and caused roof polygons close to each other to shimmer/z-fight on mobile.
+ const near=Math.max(0.025,Math.min(camera.distance*.02,maxSize*.12));
+ const far=Math.max(200,maxSize*12+camera.distance*3),proj=mat4Perspective(Math.PI/4,w/h,near,far);
  const cp=Math.cos(camera.pitch),sp=Math.sin(camera.pitch),sy=Math.sin(camera.yaw),cy=Math.cos(camera.yaw),t=camera.target.map((v,k)=>v+camera.pan[k]),eye=[t[0]+camera.distance*cp*sy,t[1]+camera.distance*sp,t[2]+camera.distance*cp*cy];const view=mat4LookAt(eye,t,[0,1,0]);
  if(showGrid)drawGround(proj,view);
  if(viewMode==='source'||!voxelGL){gl.disable(gl.CULL_FACE);drawMesh(modelGL,proj,view,1,1);gl.enable(gl.CULL_FACE);}
