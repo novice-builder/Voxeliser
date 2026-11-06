@@ -16,7 +16,7 @@
 </head>
 <body>
 <div class="app">
-<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">V5</span></strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
+<header class="topbar"><div class="brand"><span class="brandmark">▦</span><div><strong>Voxel Lab <span style="font-size:10px;color:#79deca;vertical-align:middle;letter-spacing:0">V6</span></strong><small>3D model → editable voxel grid</small></div></div><div class="topbuttons"><button id="demoHouseTop" class="btn ghost">Sample house</button><button id="resetCamera" class="btn ghost">Reset view</button><button id="topLoad" class="btn primary">+ Import model</button></div></header>
 <div class="work">
 <aside class="sidebar">
 <section class="panel full"><h2 class="paneltitle">1 · Source model</h2><label class="upload" for="fileInput"><b>↑ Import model or ZIP package</b><small>OBJ · GLB · glTF · STL · PLY · OFF · DAE · 3DS · 3MF · ZIP (including nested ZIPs)</small></label><input id="fileInput" type="file" multiple accept=".obj,.stl,.glb,.gltf,.mtl,.bin,.ply,.off,.dae,.3ds,.3mf,.zip,.jpg,.jpeg,.png,.webp,.fbx,.usdz,.blend,.max" hidden><div class="row" style="margin-top:8px"><button class="btn tiny grow" id="folderLoad" type="button">Import whole folder</button><input id="folderInput" type="file" multiple webkitdirectory directory hidden><span class="hint grow" style="margin:0">Keeps MTL, textures and glTF assets together</span></div><div id="modelPickerRow" class="field hidden" style="margin-top:12px"><label class="numlabel" for="modelPicker">Model in package</label><select id="modelPicker"></select></div><p class="filemeta" id="packageInfo" style="margin:9px 0 0"></p><p class="filemeta" id="sourceInfo" style="margin:10px 0">Sample: Torus · ready to voxelise</p><div class="row"><span class="subhead" style="margin:0">Samples</span><select id="demoSelect" class="grow" aria-label="Sample model"><option value="torus">Torus / doughnut</option><option value="house">Simple house</option><option value="sphere">Sphere</option></select><button class="btn tiny" id="loadDemo">Load</button></div><hr class="divider"><div class="two"><div><label class="numlabel" for="unit">Input units</label><select id="unit"><option value="1">Metres</option><option value="0.01">Centimetres</option><option value="0.001">Millimetres</option><option value="0.0254">Inches</option><option value="0.3048">Feet</option></select></div><div><label class="numlabel" for="scale">Additional scale</label><input id="scale" type="number" min="0.00001" max="100000" step="any" value="1"></div></div><p class="hint">OBJ and STL don't reliably store real-world units. Set these before using a precise cell size.</p></section>
@@ -489,7 +489,10 @@ function parseGLTFScene(doc,buffers){const json=doc;
       for(let i=0;i+2<count;i+=3){for(let j=0;j<3;j++){
         const idx=getIdx?getIdx(i+j)[0]:i+j,q=getPos(idx),uv=getUV?getUV(idx):[0,0];
         let u=uv[0],v=uv[1];if(texInfo&&transform){const tu=u*sx,tv=v*sy;u=ox+c*tu-s*tv;v=oy+s*tu+c*tv;}
-        uvs.push(u,v);
+        // glTF UVs use an upper-left image origin; our internal renderer/voxel
+        // sampler uses OBJ-style lower-left UVs and flips V at sampling time.
+        // Convert only glTF coordinates here, preserving OBJ/DAE behaviour.
+        uvs.push(u,1-v);
         const vc=getColour?getColour(idx):[1,1,1];vertexColours.push(vc[0]??1,vc[1]??1,vc[2]??1);
         positions.push(matrix[0]*q[0]+matrix[4]*q[1]+matrix[8]*q[2]+matrix[12],matrix[1]*q[0]+matrix[5]*q[1]+matrix[9]*q[2]+matrix[13],matrix[2]*q[0]+matrix[6]*q[1]+matrix[10]*q[2]+matrix[14]);
       }materials.push(mat);}
