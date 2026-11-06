@@ -47,3 +47,10 @@ If a GLB appears entirely white in **Original**, the problem is likely in model 
 - Verified using the supplied Gabled House and Casa Di Abitazione ZIP imports. A geometric-area-weighted check of the Gabled House roof changes the incorrectly sampled black/dark area from approximately 42% to 0% of sampled triangles; the ground mapping changes from approximately 99% dark to 25% dark, with the remainder sampling the expected grassy colours.
 
 This is still a lightweight preview renderer; advanced PBR, environment lighting, normal maps and screen-space reflections are not reproduced.
+
+
+## V7 — GLB material brightness and depth precision
+
+- Decode glTF and legacy specular/glossiness material colour factors from **linear** RGB into display/sRGB values before combining them with textures. This addresses near-black roof materials in Casa Di Abitazione, and improves other dark untextured surfaces such as planting-soil strips in Gabled House. The same palette adjustment applies to voxel JSON exports. OBJ colour values are unchanged.
+- Improve perspective depth-buffer accuracy by using a dynamically sized near clipping plane instead of 0.005 metres; this helps reduce mobile Z-fighting where model surfaces nearly overlap. Some genuinely coplanar triangles exist in the source model and can still flicker.
+- Re-tested the supplied Casa Di Abitazione and Gabled House ZIPs for import and material preservation. The exact iPhone visual output still needs verification.
