@@ -26,7 +26,7 @@ A browser-based 3D-to-voxel converter, designed for testing models before import
 
 ## Deployment
 
-This site uses ordinary static HTML/JavaScript. GitHub Pages can serve `index.html` from the repository root. In **Settings → Pages**, select **Deploy from a branch**, `main`, `/(root)`, and save. Your Pages address should then be `https://novice-builder.github.io/Voxeliser/`.
+This site uses ordinary static HTML/JavaScript and includes an automated deployment workflow at `.github/workflows/pages.yml`. For a newly created repository, open **Settings → Pages** and choose **GitHub Actions** as the deployment source if GitHub has not enabled it automatically. The workflow publishes the site from `main`, with expected address `https://novice-builder.github.io/Voxeliser/`. Check the repository **Actions** tab for deployment success or errors.
 
 ## Licence and acknowledgements
 
