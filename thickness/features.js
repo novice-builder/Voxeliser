@@ -238,11 +238,17 @@ async function texturePNG(tex){
 async function buildGLB(){
  const source=B.getSource(),external=B.getSourceGeometry();
  if(!source||!external)throw Error('No source model is loaded.');
- const visible=external.groups.filter(g=>B.isVisible(g.partId)),thick=geometry&&$('shellVisible').checked?geometry.groups.filter(g=>B.isVisible(g.partId)):[];
+ const mode=$('exportGeometryMode')?.value||'all',picked=B.getSelected();
+ if(mode==='selected'&&!picked.size)throw Error('Select one or more components in the list or 3D preview before exporting selected parts.');
+ const includeOriginal=mode==='all'||mode==='original'||mode==='selected',includeThickness=mode==='all'||mode==='thickness'||mode==='selected';
+ if(mode==='thickness'&&(!geometry||!$('shellVisible').checked))throw Error('Build thickness and enable Show generated thickness first.');
+ const allowed=g=>B.isVisible(g.partId)&&(mode!=='selected'||picked.has(g.partId));
+ const visible=includeOriginal?external.groups.filter(allowed):[];
+ const thick=includeThickness&&geometry&&$('shellVisible').checked?geometry.groups.filter(allowed):[];
  const groups=[...visible.map(g=>({...g,type:'original'})),...thick.map(g=>({...g,type:'thickness'}))];
  if(!groups.length)throw Error('No visible mesh geometry to export.');
  const vertCount=groups.reduce((n,g)=>n+g.vertex.length/11,0);
- if(vertCount>1400000)throw Error('Export would contain '+fmt(vertCount)+' vertices. Hide unwanted groups or reduce model detail (limit 1.4 million vertices).');
+ if(vertCount>6000000)throw Error('Export would contain '+fmt(vertCount)+' vertices. To avoid exhausting your device memory, try Exterior only, Thickness only or Selected components (6 million vertex limit).');
  const doc={asset:{version:'2.0',generator:'Voxel Lab Thickness Lab beta',extras:{voxelLabAppearance:settings()}},scene:0,
  scenes:[{nodes:[]}],nodes:[],meshes:[],materials:[],accessors:[],bufferViews:[],buffers:[],
  images:[],samplers:[],textures:[],extensionsUsed:['KHR_materials_unlit'],extensionsRequired:['KHR_materials_unlit']};
@@ -302,13 +308,15 @@ async function buildGLB(){
  doc.buffers=[{byteLength:offset}];
  const utf8=new TextEncoder(),jsonBytes=utf8.encode(JSON.stringify(doc));
  const jsonPad=(4-jsonBytes.length%4)%4,binPad=(4-offset%4)%4,total=12+8+jsonBytes.length+jsonPad+8+offset+binPad;
- const out=new Uint8Array(total),view=new DataView(out.buffer);
- view.setUint32(0,0x46546c67,true);view.setUint32(4,2,true);view.setUint32(8,total,true);
- view.setUint32(12,jsonBytes.length+jsonPad,true);view.setUint32(16,0x4e4f534a,true);
- out.set(jsonBytes,20);out.fill(32,20+jsonBytes.length,20+jsonBytes.length+jsonPad);
- const binStart=20+jsonBytes.length+jsonPad;view.setUint32(binStart,offset+binPad,true);view.setUint32(binStart+4,0x004e4942,true);
- let cursor=binStart+8;for(const chunk of chunks){out.set(chunk,cursor);cursor+=chunk.length;}
- return{blob:new Blob([out],{type:'model/gltf-binary'}),vertices:vertCount,materials:doc.materials.length};
+ // Build Blob from existing ArrayBuffer views rather than duplicating the entire model
+ // into one very large Uint8Array (important on iPhone Safari).
+ const header=new Uint8Array(20),head=new DataView(header.buffer);
+ head.setUint32(0,0x46546c67,true);head.setUint32(4,2,true);head.setUint32(8,total,true);
+ head.setUint32(12,jsonBytes.length+jsonPad,true);head.setUint32(16,0x4e4f534a,true);
+ const binHead=new Uint8Array(8),binView=new DataView(binHead.buffer);
+ binView.setUint32(0,offset+binPad,true);binView.setUint32(4,0x004e4942,true);
+ const parts=[header,jsonBytes,new Uint8Array(jsonPad).fill(32),binHead,...chunks,new Uint8Array(binPad)];
+ return{blob:new Blob(parts,{type:'model/gltf-binary'}),vertices:vertCount,materials:doc.materials.length};
 }
 async function exportLook(){
  if(exporting)return;exporting=true;$('exportLookGLB').disabled=true;$('exportLookInfo').textContent='Encoding textures and baked appearance into GLB…';
